@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/code/**)",
+      "Bash(# Check what''s actually in the JTFRAME rtl dir and any other rtl dirs ls /c/code/MiSTer_mp4_player/rtl/JTFRAME/ ls /c/code/mpeg2fpga-master/)",
+      "Bash(grep:*)",
+      "Bash(wsl -d Ubuntu-20.04 -e grep:*)",
+      "Bash(wsl:*)",
+      "Read(//c/Users/christoph/AppData/Local/Temp/claude/c--code-MiSTer-mp4-player/tasks/**)",
+      "WebFetch(domain:github.com)",
+      "Bash(ls c:/code/MiSTer_mp4_player/sys/*.qsys)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ],
+    "additionalDirectories": [
+      "c:\\code\\mpeg2fpga-master\\rtl"
+    ]
+  }
+}
