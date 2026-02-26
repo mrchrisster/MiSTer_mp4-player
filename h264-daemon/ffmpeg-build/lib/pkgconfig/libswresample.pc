@@ -1,0 +1,14 @@
+prefix=/mnt/c/code/MiSTer_mp4_player/h264-daemon/ffmpeg-build
+exec_prefix=${prefix}
+libdir=/mnt/c/code/MiSTer_mp4_player/h264-daemon/ffmpeg-build/lib
+includedir=/mnt/c/code/MiSTer_mp4_player/h264-daemon/ffmpeg-build/include
+
+Name: libswresample
+Description: FFmpeg audio resampling library
+Version: 4.12.100
+Requires: libavutil >= 58.29.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lswresample -lm -latomic
+Libs.private: 
+Cflags: -I${includedir}

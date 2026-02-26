@@ -1,4 +1,4 @@
-db
+	db
 greybox_tmp
 incremental_db
 output_files
@@ -6,6 +6,7 @@ simulation
 hc_output
 scaler
 hps_isw_handoff
+old-builds
 vip
 *_sim
 .qsys_edit

@@ -126,15 +126,20 @@ always @(posedge clk) begin
         dma_done_latch <= 1'b0;
         fb_vbl_latch   <= 1'b0;
     end else begin
+        // SET has priority over CLEAR: if the pulse fires on the exact same
+        // clock as the ARM's status read, the latch is SET (not cleared).
+        // The ARM will see it on the next poll.  Using two independent 'if'
+        // blocks would let the clear (being last in source order) win the
+        // Verilog NB race, silently discarding the pulse → DMA timeout bug.
         if (dma_done)
             dma_done_latch <= 1'b1;
+        else if (arvalid & arready & (araddr[4:2] == 3'b000))
+            dma_done_latch <= 1'b0;
+
         if (fb_vbl)
             fb_vbl_latch   <= 1'b1;
-        // Both latches cleared on ARM status read
-        if (arvalid & arready & (araddr[4:2] == 3'b000)) begin
-            dma_done_latch <= 1'b0;
+        else if (arvalid & arready & (araddr[4:2] == 3'b000))
             fb_vbl_latch   <= 1'b0;
-        end
     end
 end
 

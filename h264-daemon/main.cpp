@@ -98,9 +98,9 @@ static void write_yuv_and_dma(const AVFrame* f,
         int g = (298*c - 100*d - 208*e + 128) >> 8; g = g<0?0:g>255?255:g;
         int b = (298*c + 516*d + 128) >> 8; b = b<0?0:b>255?255:b;
         fprintf(stderr, "[mp4_play] center YUV=(%d,%d,%d) -> RGB=(%d,%d,%d) "
-                        "expected RBG565=0x%04X\n",
+                        "expected RGB565=0x%04X\n",
                 Y, U, V, r, g, b,
-                ((r&0xF8)<<8) | ((b&0xFC)<<3) | (g>>3));
+                ((r&0xF8)<<8) | ((g&0xFC)<<3) | (b>>3));
         } // end else (all planes non-NULL)
     }
 
