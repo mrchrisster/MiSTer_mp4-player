@@ -1,8 +1,8 @@
 // yuv_to_rgb.sv
 //
-// BT.601 limited-range YUV420P → RGB565 conversion pipeline.
-// MiSTer ASCAL FB_FORMAT=5'd4: bit[4]=0 → RGB (not BGR), bit[3]=0 → 565.
-// Standard RGB565 layout: R[15:11] G[10:5] B[4:0]
+// BT.601 limited-range YUV420P → BGR565 conversion pipeline.
+// MiSTer ASCAL FB_FORMAT=5'd4 empirically uses BGR565: B[15:11] G[10:5] R[4:0]
+// (Confirmed via test_rgb_direct: 0xF800 displays as BLUE, 0x001F displays as RED)
 //
 // Pipeline latency: 4 clock cycles from valid input to valid output.
 // Throughput:       1 pixel per clock (fully pipelined).
@@ -28,7 +28,7 @@ module yuv_to_rgb (
     input  wire        data_valid_in,
 
     // Pixel output — valid 4 cycles after corresponding input
-    output reg  [15:0] rgb565,     // RGB565: R[15:11] G[10:5] B[4:0]
+    output reg  [15:0] rgb565,     // BGR565: B[15:11] G[10:5] R[4:0]
     output reg         data_valid_out
 );
 
@@ -106,8 +106,8 @@ wire [7:0] G8 = G_s12[11] ? 8'd0 : (G_s12 > 12'sd255 ? 8'd255 : G_s12[7:0]);
 wire [7:0] B8 = B_s12[11] ? 8'd0 : (B_s12 > 12'sd255 ? 8'd255 : B_s12[7:0]);
 
 always @(posedge clk) begin
-    // Pack as standard RGB565: R[15:11] G[10:5] B[4:0]
-    rgb565        <= {R8[7:3], G8[7:2], B8[7:3]};
+    // Pack as BGR565: B[15:11] G[10:5] R[4:0]
+    rgb565        <= {B8[7:3], G8[7:2], R8[7:3]};
     data_valid_out <= reset ? 1'b0 : s3_valid;
 end
 

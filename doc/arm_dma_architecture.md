@@ -4,7 +4,7 @@
 
 The ARM daemon (`h264-daemon/main.cpp`) decodes MP4 video, scales the raw YUV420P planes,
 and memcpy's them to uncached DDR3. The FPGA reads those planes via the `fpga2sdram` Avalon
-port, converts them to RBG565 in a hardware pipeline, and writes the result to a double
+port, converts them to BGR565 in a hardware pipeline, and writes the result to a double
 framebuffer. The ASCAL scaler reads from the active framebuffer buffer and outputs to HDMI.
 
 ```
@@ -23,7 +23,7 @@ ARM (Cortex-A9):
   U @ 0x30177000           │ burst read Y/U/V via fpga2sdram RAM1
   V @ 0x30189C00           │ nearest-neighbour chroma upsampling
                             │ yuv_to_rgb (4-stage BT.601 pipeline)
-  RGB A @ 0x30000000 ◄────── burst write RBG565
+  RGB A @ 0x30000000 ◄────── burst write BGR565
   RGB B @ 0x30096000        │ assert done pulse → dma_done_latch
         │                   │
         │  ASCAL reads FB_BASE (buf_sel selects A or B)
@@ -62,34 +62,57 @@ The YUV region ends at `0x30189C00 + 76800 = 0x3019C000` — well within the 1 G
 
 ---
 
-## Pixel Format — RBG565 Big-Endian
+## Pixel Format — BGR565 Little-Endian
 
-Each pixel is 16 bits, written **big-endian** (high byte at lower DDR3 address).
+Each pixel is 16 bits, stored **little-endian** in DDR3 (low byte at lower address).
 
-**CRITICAL — the ASCAL uses RBG565, not standard RGB565. Blue and Green are swapped.**
+**CRITICAL — the ASCAL uses BGR565, not standard RGB565.**
 
-Hardware-confirmed (Feb 2026) via exhaustive palette test:
+Empirically confirmed via test_rgb_direct (ARM writes pixels directly to framebuffer):
+- Write 0xF800 → displays as BLUE (confirms B in bits [15:11])
+- Write 0x07E0 → displays as GREEN (confirms G in bits [10:5])
+- Write 0x001F → displays as RED (confirms R in bits [4:0])
+- Write 0xFFFF → displays as WHITE ✓
+
+16-bit word layout:
 
 ```
 Bit:  15 14 13 12 11 | 10  9  8  7  6  5 |  4  3  2  1  0
-       R4 R3 R2 R1 R0   B5 B4 B3 B2 B1 B0   G4 G3 G2 G1 G0
+      B4 B3 B2 B1 B0 | G5 G4 G3 G2 G1 G0 | R4 R3 R2 R1 R0
 ```
 
 | Bits | Channel | Width |
 |------|---------|-------|
-| [15:11] | Red   | 5 bits |
-| [10:5]  | Blue  | 6 bits |  ← swapped vs standard RGB565 |
-| [4:0]   | Green | 5 bits |  ← swapped vs standard RGB565 |
+| [15:11] | Blue  | 5 bits |
+| [10:5]  | Green | 6 bits |
+| [4:0]   | Red   | 5 bits |
 
-Do **not** use `libswscale` (`AV_PIX_FMT_RGB565BE`) — it produces incorrect colors for this
-format on Cortex-A9. In Phase 1.5 the FPGA handles conversion; the ARM only needs to
-write raw YUV420P planes.
+**Byte order in DDR3 (little-endian):**
+Both ARM and FPGA DMA must store pixels with the low byte at the lower address.
+ARM `uint16_t` writes are natively little-endian. The FPGA DMA's `rgb_buf` stores
+`[even] = pixel[7:0]` (low byte), `[odd] = pixel[15:8]` (high byte), and `pack_beat()`
+maps `rgb_buf[base+0]` → `writedata[7:0]` → lowest DDR3 byte address. ASCAL reads
+`pixel = {readdata[15:8], readdata[7:0]}` which reconstructs the correct 16-bit value.
 
-**Byte order verification:**
+**C packing for ARM (little-endian CPU):**
+```c
+uint16_t pixel = (b & 0xF8) << 8 | (g & 0xFC) << 3 | (r >> 3);
+// ARM stores little-endian natively; ASCAL reads via Avalon which matches.
 ```
-Write [0xF8, 0x00] → ASCAL reads 0xF800 → R=31, B=0, G=0 → RED ✓
-Write [0x00, 0xF8] → ASCAL reads 0x00F8 → R=0, B=7, G=24  → wrong ✗
+
+**Verilog packing for FPGA (yuv_to_rgb.sv output):**
+```verilog
+rgb565 <= {B8[7:3], G8[7:2], R8[7:3]};  // BGR565: B[15:11] G[10:5] R[4:0]
 ```
+
+**Verilog storage in rgb_buf (yuv_fb_dma.v):**
+```verilog
+rgb_buf[{px, 1'b0}] <= pipe_rgb[ 7:0];   // low byte at even index
+rgb_buf[{px, 1'b1}] <= pipe_rgb[15:8];   // high byte at odd index
+```
+
+Do **not** use `libswscale` (`AV_PIX_FMT_RGB565BE`) — it produces RGB565, not BGR565.
+In Phase 1.5 the FPGA handles YUV→BGR565 conversion; the ARM only writes raw YUV420P planes.
 
 ---
 
@@ -164,162 +187,92 @@ axi[7] = (uint32_t)FB_PHYS;                          // initial RGB base = Buffe
 
 ---
 
-## FFmpeg Decode Loop (Phase 1.5)
+## Decode Architecture
 
+`play_video()` runs two concurrent threads on the dual Cortex-A9:
+
+```
+Core 1 — decoder thread          Core 0 — display thread
+─────────────────────────         ──────────────────────────────────────
+av_read_frame / decode            wait for frame in FrameQueue
+av_frame_move_ref → queue         scale YUV → DDR3 → FPGA DMA → poll done
+signal not_empty                  sleep to target_us
+                                  wait VBlank (50 ms timeout)
+                                  page flip
+```
+
+Wall time per frame ≈ `max(decode, scale+DMA+VBL)` instead of the sum.
+With `threads=1` (default): decoder owns Core 1; display owns Core 0.
+
+### `write_yuv_and_dma()` — key implementation points
+
+**Scale LUTs** (rebuilt once per unique source resolution):
 ```cpp
-extern "C" {
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-}
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <stdint.h>
-#include <string.h>
+uint16_t x_map[FB_W], y_map[FB_H];    // luma
+uint16_t ux_map[FB_W/2], uy_map[FB_H/2]; // chroma
+// x_map[dx] = dx * src_w / FB_W  — eliminates per-pixel divide
+```
 
-static int64_t now_us(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
-}
+**Identity fast-path** (src == 640×480): each Y row is `memcpy`'d directly to the
+DDR3 YUV region without a temporary buffer, saving one 307 KB copy per frame.
 
-// Scale YUV420P planes, write to DDR3, trigger FPGA DMA, poll done
-static void write_yuv_and_dma(const AVFrame* f,
-                               uint8_t* yuv_y, uint8_t* yuv_u, uint8_t* yuv_v,
-                               uint32_t rgb_back_phys,
-                               volatile uint32_t* axi)
-{
-    // 1. Nearest-neighbour scale Y → 640×480
-    static uint8_t tmp_y[640 * 480];
-    for (int dy = 0; dy < 480; dy++) {
-        int sy = dy * f->height / 480;
-        for (int dx = 0; dx < 640; dx++)
-            tmp_y[dy*640 + dx] = f->data[0][sy*f->linesize[0] + dx*f->width/640];
-    }
-    memcpy(yuv_y, tmp_y, 640*480);
+**DMB SY before trigger** — ensures all ARM AXI write-buffer stores to the DDR3
+YUV region are fully committed before the FPGA DMA trigger write crosses the H2F
+LW AXI path. Without this, the FPGA can start reading while ARM writes are still
+in-flight, causing a read-after-write hazard and 2–3× DMA slowdowns:
+```cpp
+__asm__ volatile ("dmb sy" ::: "memory");
+axi[AXI_RGB_BASE_IDX] = rgb_back_phys;
+axi[AXI_CTRL_IDX] = (axi[AXI_CTRL_IDX] & 1u) | AXI_DMA_TRIG_BIT;
+```
 
-    // 2. Nearest-neighbour scale U/V → 320×240
-    static uint8_t tmp_u[320*240], tmp_v[320*240];
-    for (int dy = 0; dy < 240; dy++) {
-        int sy = dy * (f->height/2) / 240;
-        for (int dx = 0; dx < 320; dx++) {
-            int sx = dx * (f->width/2) / 320;
-            tmp_u[dy*320 + dx] = f->data[1][sy*f->linesize[1] + sx];
-            tmp_v[dy*320 + dx] = f->data[2][sy*f->linesize[2] + sx];
-        }
-    }
-    memcpy(yuv_u, tmp_u, 320*240);
-    memcpy(yuv_v, tmp_v, 320*240);
-
-    // 3. Tell FPGA where to write, trigger DMA
-    axi[7] = rgb_back_phys;                          // RGB output base
-    axi[2] = (axi[2] & 1u) | (1u << 1);             // dma_trigger=1, preserve buf_sel
-
-    // 4. Poll dma_done (sticky latch — cleared by this read automatically)
-    while (!(axi[0] & (1u << 3))) { /* spin */ }
-}
-
-static void play_video(const char* path,
-                       volatile uint32_t* axi,
-                       uint8_t* yuv_y, uint8_t* yuv_u, uint8_t* yuv_v,
-                       bool benchmark, int threads, double seek_s)
-{
-    int front = 0, back = 1;
-
-    AVFormatContext* fmt = NULL;
-    avformat_open_input(&fmt, path, NULL, NULL);
-    avformat_find_stream_info(fmt, NULL);
-
-    int vstream = -1;
-    for (unsigned i = 0; i < fmt->nb_streams; i++)
-        if (fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
-            { vstream = i; break; }
-
-    AVCodecParameters* par  = fmt->streams[vstream]->codecpar;
-    const AVCodec*     codec = avcodec_find_decoder(par->codec_id);
-    AVCodecContext*    dec   = avcodec_alloc_context3(codec);
-    avcodec_parameters_to_context(dec, par);
-    if (threads > 0) dec->thread_count = threads;
-    avcodec_open2(dec, codec, NULL);
-
-    if (seek_s > 0.0)
-        av_seek_frame(fmt, -1, (int64_t)(seek_s * AV_TIME_BASE), AVSEEK_FLAG_BACKWARD);
-
-    AVPacket*  pkt   = av_packet_alloc();
-    AVFrame*   frame = av_frame_alloc();
-    AVRational tb    = fmt->streams[vstream]->time_base;
-
-    int64_t start_wall_us = 0;
-    double  start_pts_s   = 0.0;
-    bool    clk_init      = false;
-    double  prev_pts_s    = -1.0;
-    double  frame_period_s = 1.0 / 30.0;
-
-    while (av_read_frame(fmt, pkt) >= 0) {
-        if (pkt->stream_index != vstream) { av_packet_unref(pkt); continue; }
-        avcodec_send_packet(dec, pkt);
-
-        while (avcodec_receive_frame(dec, frame) == 0) {
-            if (frame->pts == AV_NOPTS_VALUE) continue;
-            const double frame_pts_s = frame->pts * av_q2d(tb);
-
-            // A. Init master clock
-            if (!clk_init) {
-                start_wall_us = now_us();
-                start_pts_s   = frame_pts_s;
-                clk_init      = true;
-            }
-
-            // B. Update frame period from PTS delta
-            if (prev_pts_s >= 0.0) {
-                const double dp = frame_pts_s - prev_pts_s;
-                if (dp > 0.001 && dp < 0.2)
-                    frame_period_s = dp;
-            }
-            prev_pts_s = frame_pts_s;
-
-            // C. Compute target display time
-            const int64_t target_us = start_wall_us
-                                    + (int64_t)((frame_pts_s - start_pts_s) * 1e6);
-
-            // D. Drop if more than half a frame period late
-            if (!benchmark) {
-                const int64_t drop_thresh_us = (int64_t)(frame_period_s * 0.5e6);
-                if (now_us() > target_us + drop_thresh_us) continue;
-            }
-
-            // E. Scale YUV, memcpy to DDR3, trigger FPGA DMA, poll done
-            {
-                const uint32_t rgb_back_phys = 0x30000000UL + (uint32_t)back * (640*480*2);
-                write_yuv_and_dma(frame, yuv_y, yuv_u, yuv_v, rgb_back_phys, axi);
-            }
-
-            // F. Sleep until 1 ms before target
-            if (!benchmark) {
-                const long to_sleep = (long)(target_us - now_us()) - 1000;
-                if (to_sleep > 500) {
-                    struct timespec ts = { to_sleep/1000000, (to_sleep%1000000)*1000 };
-                    nanosleep(&ts, NULL);
-                }
-
-                // G. Wait for VBlank
-                while (!(axi[0] & (1u << 2))) { /* spin */ }
-            }
-
-            // H. Page flip
-            axi[2] = (uint32_t)back;         // sets buf_sel, dma_trigger=0
-
-            // I. Swap front/back
-            { int tmp = front; front = back; back = tmp; }
-        }
-        av_packet_unref(pkt);
-    }
-
-    av_frame_free(&frame);
-    av_packet_free(&pkt);
-    avcodec_free_context(&dec);
-    avformat_close_input(&fmt);
+**DMA timeout** — 200 ms spin-poll guard; sets `g_stop=1` and returns if
+`dma_done` bit never asserts. This is the runtime guard against a mismatched or
+missing FPGA bitstream:
+```cpp
+while (!(axi[AXI_STATUS_IDX] & AXI_DMA_DONE_BIT)) {
+    if (now_us() - dma_t0 > 200000LL) { g_stop = 1; return; }
 }
 ```
+
+**Decoder fast flags:**
+```cpp
+dec->skip_loop_filter = AVDISCARD_ALL;       // skip H.264 deblock: -15–25% decode time
+dec->flags2          |= AV_CODEC_FLAG2_FAST; // non-spec fast paths: -5–10%
+```
+
+**Timing:** uses `gettimeofday` + `usleep` (GLIBC 2.0) instead of
+`clock_gettime` / `nanosleep` (GLIBC 2.17) to avoid dynamic linker issues on
+MiSTer's older libc.
+
+### Display loop — key implementation points
+
+**Drop threshold:** one full frame period (≈33.3 ms at 30 fps). Frames arriving
+0–33 ms late are displayed; the brief timing slip is imperceptible. Frames more
+than one period late are dropped. Using 0.5× caused unnecessary drops of frames
+that were only 18–27 ms late.
+
+**Clock reset after drop:** after each drop, `start_wall_us` and `start_pts_s`
+are re-anchored to `now_us()` and the dropped frame's PTS. This prevents cascade
+drops where one slow frame skews the clock and every subsequent frame appears late.
+
+**VBlank timeout:** 50 ms — if no VBlank arrives (FB_EN not active or ASCAL not
+running), playback continues without tearing protection rather than hanging.
+
+**Page flip:**
+```cpp
+axi[AXI_CTRL_IDX] = (uint32_t)back;   // writes buf_sel; dma_trigger=0
+{ int tmp = front; front = back; back = tmp; }
+```
+
+### Startup AXI access
+
+`main()` only **writes** to AXI registers (init buf_sel, YUV/RGB base addresses).
+The Cyclone V H2F LW AXI bridge uses posted writes — they complete immediately
+from the CPU's perspective even if no FPGA slave responds. **No reads are issued
+in `main()`**, so launching the app with a non-Groovy core loaded does not hang
+or crash the system. The DMA timeout in `write_yuv_and_dma()` is the runtime
+safety net if playback is attempted against a wrong bitstream.
 
 ---
 
@@ -339,6 +292,7 @@ arm-linux-gnueabihf-g++ -O2 -o mp4_play main.cpp \
 **Key flags:**
 - `-lz` — required: libavformat's matroska and MOV demuxers link against zlib
 - `-lswresample` — required by libavcodec even when audio is not decoded
+- `-lpthread` — required: decode-ahead uses a `pthread` decoder thread
 - `-static` — self-contained ARM32 ELF; no library dependencies on MiSTer Linux
 
 Result: ~11 MB static binary. Deploy to `/media/fat/mp4_play`.
@@ -356,7 +310,7 @@ g++ -O2 -o mp4_play main.cpp \
 ### Test 1 — Framebuffer pixel path
 
 1. Enable MP4 mode in the MiSTer OSD (**Video Mode → MP4**).
-2. Fill Buffer A with solid red (`0xF800` big-endian = `[0xF8, 0x00]`):
+2. Fill Buffer A with solid blue (`0xF800` in BGR565 = `[0xF8, 0x00]` big-endian):
 
 ```bash
 python3 -c "
@@ -368,7 +322,9 @@ m.seek(0); m.write(b'\xF8\x00' * 640 * 480)
 m.close(); os.close(fd)"
 ```
 
-Expected: solid red HDMI output.
+Expected: solid **blue** HDMI output (0xF800 = BGR565 with B=31, G=0, R=0).
+
+For solid **red**, use `b'\x00\x1F'` (0x001F = BGR565 with B=0, G=0, R=31).
 
 ### Test 2 — FPGA DMA (devmem)
 
@@ -419,10 +375,13 @@ or Avalon backpressure.
 - Each frame: `target_us = start_wall_us + (frame_pts - start_pts) * 1e6`.
 - Errors from `nanosleep` inaccuracy do not compound.
 
-**Frame drop threshold:** half a frame period late (typically ~16 ms / 2 = 8 ms).
+**Frame drop threshold:** one full frame period late (≈33.3 ms at 30 fps).
+Frames 0–33 ms late are displayed; only genuine spikes beyond one period are dropped.
+After each drop the master clock is re-anchored to prevent cascade drops.
 
 **VSync integration:**
 - ARM sleeps to 1 ms before `target_us`, then spins on VBlank bit (`axi[0] & 4`).
+- 50 ms VBlank timeout — playback continues without vsync if FB_EN is not active.
 - `fb_vbl` from ASCAL is synchronized to `clk_sys` via a 2-FF CDC register in `sys_top.v`.
 - Page flip (`axi[2] = back`) occurs within one AXI transaction of VBlank assertion — effectively tearing-free.
 

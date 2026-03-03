@@ -13,13 +13,25 @@ LIBS     = -Wl,-Bstatic \
            -Wl,-Bdynamic \
                -lm -lpthread -lz -ldl
 
-# Output binary
+# Output binaries
 TARGET = mp4_play
+TESTS  = test_color test_endian test_rgb_direct
 
 all: $(TARGET)
+
+tests: $(TESTS)
 
 $(TARGET): main.cpp
 	$(CXX) $(CFLAGS) $(INCLUDES) -o $(TARGET) main.cpp $(LDFLAGS) $(LIBS)
 
+test_color: test_color.cpp
+	$(CXX) $(CFLAGS) -o $@ $@.cpp
+
+test_endian: test_endian.cpp
+	$(CXX) $(CFLAGS) -o $@ $@.cpp
+
+test_rgb_direct: test_rgb_direct.cpp
+	$(CXX) $(CFLAGS) -o $@ $@.cpp
+
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(TESTS)

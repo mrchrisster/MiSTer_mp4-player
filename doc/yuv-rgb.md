@@ -1,15 +1,15 @@
-# Phase 1.5 — FPGA YUV→RBG565 Conversion: Implementation Reference
+# Phase 1.5 — FPGA YUV→BGR565 Conversion: Implementation Reference
 
-> **Status: COMPLETE** (Feb 2026) — awaiting first hardware synthesis and test.
+> **Status: DEPLOYED** (Feb-Mar 2026) — Hardware tested and operational. Pixel format corrected to BGR565 (Mar 2026).
 
 ---
 
 ## 1. OBJECTIVE
 
-Offload YUV420P → RBG565 color-space conversion from the ARM Cortex-A9 to Cyclone V FPGA
+Offload YUV420P → BGR565 color-space conversion from the ARM Cortex-A9 to Cyclone V FPGA
 fabric. The ARM writes raw YUV planes to DDR3 and triggers the FPGA DMA engine, which reads
 the planes via the `fpga2sdram` port, converts via a 4-stage BT.601 pipeline, and writes
-RBG565 pixels to the active back buffer. The ARM is freed from all pixel math.
+BGR565 pixels to the active back buffer. The ARM is freed from all pixel math.
 
 ---
 
@@ -47,45 +47,47 @@ ARM writes 460 KB YUV420P planes
 
 ---
 
-## 3. PIXEL FORMAT — RBG565 BIG-ENDIAN
+## 3. PIXEL FORMAT - BGR565 LITTLE-ENDIAN
 
-**Critical:** The MiSTer ASCAL scaler uses **RBG565**, not standard RGB565. Blue and Green
-are swapped relative to the standard definition. Pixels are stored big-endian (high byte at
-the lower DDR3 address).
+**Critical:** The MiSTer ASCAL scaler uses **BGR565**, not standard RGB565.
+Pixels are stored **little-endian** in DDR3 (low byte at lower address), matching ARM native byte order.
 
 ```
 Bit:  15 14 13 12 11 | 10  9  8  7  6  5 |  4  3  2  1  0
-       R4 R3 R2 R1 R0   B5 B4 B3 B2 B1 B0   G4 G3 G2 G1 G0
+       B4 B3 B2 B1 B0   G5 G4 G3 G2 G1 G0   R4 R3 R2 R1 R0
 ```
 
 | Bits | Channel | Width |
 |------|---------|-------|
-| [15:11] | Red   | 5 bits |
-| [10:5]  | Blue  | 6 bits |  ← swapped vs standard RGB565 |
-| [4:0]   | Green | 5 bits |  ← swapped vs standard RGB565 |
+| [15:11] | Blue  | 5 bits |
+| [10:5]  | Green | 6 bits |
+| [4:0]   | Red   | 5 bits |
 
-**Memory byte order (big-endian):**
-- High byte (bits [15:8]) at lower DDR3 address.
-- Low byte (bits [7:0]) at higher DDR3 address.
+**Memory byte order (little-endian):**
+- Low byte (bits [7:0]) at lower DDR3 address.
+- High byte (bits [15:8]) at higher DDR3 address.
+- ASCAL reads via Avalon: `pixel = {readdata[15:8], readdata[7:0]}` = little-endian reconstruction.
 
 **Avalon writedata byte assignment** (64-bit bus, 4 pixels per beat):
 ```
-writedata[7:0]   = pixel[0][15:8]  (pixel 0 high byte → lowest address)
-writedata[15:8]  = pixel[0][7:0]   (pixel 0 low byte)
-writedata[23:16] = pixel[1][15:8]  (pixel 1 high byte)
-writedata[31:24] = pixel[1][7:0]
-writedata[39:32] = pixel[2][15:8]
-writedata[47:40] = pixel[2][7:0]
-writedata[55:48] = pixel[3][15:8]
-writedata[63:56] = pixel[3][7:0]   (pixel 3 low byte → highest address)
+writedata[7:0]   = pixel[0][7:0]   (pixel 0 low byte → lowest address)
+writedata[15:8]  = pixel[0][15:8]  (pixel 0 high byte)
+writedata[23:16] = pixel[1][7:0]   (pixel 1 low byte)
+writedata[31:24] = pixel[1][15:8]
+writedata[39:32] = pixel[2][7:0]
+writedata[47:40] = pixel[2][15:8]
+writedata[55:48] = pixel[3][7:0]
+writedata[63:56] = pixel[3][15:8]  (pixel 3 high byte → highest address)
 ```
 
-**FPGA pack function (Verilog, from `rtl/yuv_fb_dma.v`):**
+**FPGA rgb_buf storage and pack function (from `rtl/yuv_fb_dma.v`):**
 ```verilog
+// rgb_buf stores little-endian: [2k]=low byte, [2k+1]=high byte
+rgb_buf[{px, 1'b0}] <= pipe_rgb[ 7:0];   // low byte at even index
+rgb_buf[{px, 1'b1}] <= pipe_rgb[15:8];   // high byte at odd index
+
 // Pack 4 consecutive pixels from rgb_buf starting at byte offset b*8.
-// rgb_buf stores [b*8+0]=p0_high, [b*8+1]=p0_low, [b*8+2]=p1_high, ...
-// Avalon little-endian: writedata[7:0] → DDR3 lowest address.
-// For big-endian pixels, [7:0] must be the HIGH byte of pixel 0.
+// Avalon: writedata[7:0] → DDR3 lowest address = low byte of pixel 0.
 function [63:0] pack_beat;
     input [7:0] b;   // beat index (0–159 for 640-pixel row)
     reg  [10:0] base;
@@ -111,12 +113,11 @@ r = r < 0 ? 0 : r > 255 ? 255 : r;
 g = g < 0 ? 0 : g > 255 ? 255 : g;
 b = b < 0 ? 0 : b > 255 ? 255 : b;
 
-// RBG565BE: R[15:11] B[10:5] G[4:0], high byte first
-uint16_t px = ((uint16_t)(r & 0xF8) << 8)
-            | ((uint16_t)(b & 0xFC) << 3)
-            |  (uint16_t)(g >> 3);
-*dst++ = (uint8_t)(px >> 8);
-*dst++ = (uint8_t)(px & 0xFF);
+// BGR565: B[15:11] G[10:5] R[4:0], little-endian
+uint16_t px = ((uint16_t)(b & 0xF8) << 8)
+            | ((uint16_t)(g & 0xFC) << 3)
+            |  (uint16_t)(r >> 3);
+// ARM uint16_t write is natively little-endian, matching ASCAL expectations.
 ```
 
 ---
@@ -141,13 +142,13 @@ B = (298*c + 516*d         + 128) >> 8   clamp [0,255]
 | 1 | Subtract BT.601 offsets → signed 9-bit `c`, `d`, `e` | `s1_c`, `s1_d`, `s1_e`, `s1_valid` |
 | 2 | Constant multiplications → signed 20-bit products (`298*c`, `409*e`, `100*d`, `208*e`, `516*d`) | `s2_yy`…`s2_p4`, `s2_valid` |
 | 3 | Accumulate R/G/B with rounding constant (+128) | `s3_R_acc`, `s3_G_acc`, `s3_B_acc`, `s3_valid` |
-| 4 | Shift right 8, clamp [0,255], pack RBG565 | `rgb565`, `data_valid_out` |
+| 4 | Shift right 8, clamp [0,255], pack BGR565 | `rgb565`, `data_valid_out` |
 
 **Pipeline latency:** 4 clocks from `data_valid_in` to `data_valid_out`.
 
 **Quartus DSP inference:** The 5 constant multiplications in Stage 2 (`298*c`, `409*e`, `100*d`, `208*e`, `516*d`) each map to one Cyclone V DSP block (9-bit × 10-bit → 19-bit signed product). Zero LUT cost for the multiplications.
 
-**Output format:** `rgb565[15:0]` = `{R8[7:3], B8[7:2], G8[7:3]}` — RBG565, identical byte order to what the ARM would write.
+**Output format:** `rgb565[15:0]` = `{B8[7:3], G8[7:2], R8[7:3]}` — BGR565 (Blue in MSB, Red in LSB).
 
 ---
 
@@ -204,7 +205,7 @@ parameter PIPE_LAT  = 5;     // total pipeline latency: 1 (pipe_Y reg) + 4 (yuv_
 reg [7:0]  y_buf  [0:639];   // Y luma, 1 byte/pixel
 reg [7:0]  u_buf  [0:319];   // U chroma, 1 byte/chroma-pixel
 reg [7:0]  v_buf  [0:319];   // V chroma, 1 byte/chroma-pixel
-reg [7:0]  rgb_buf[0:1279];  // RGB output, 2 bytes/pixel (big-endian)
+reg [7:0]  rgb_buf[0:1279];  // RGB output, 2 bytes/pixel (little-endian)
 ```
 
 ### FSM State Machine
@@ -281,23 +282,19 @@ In `S_WRITE`, when the current beat is accepted (`avl_write && !avl_waitrequest`
 
 The `done` output of `yuv_fb_dma` is a single-clock pulse (~10 ns at 100 MHz). The ARM polling loop cannot reliably catch a 10 ns pulse — the AXI read takes hundreds of nanoseconds.
 
-The `dma_done_latch` register solves this:
-```verilog
-always @(posedge clk) begin
-    if (!rst_n)
-        dma_done_latch <= 1'b0;
-    else begin
-        if (dma_done)                                        // set on pulse
-            dma_done_latch <= 1'b1;
-        if (arvalid & arready & (araddr[4:2] == 3'b000))    // clear on ARM read
-            dma_done_latch <= 1'b0;
-    end
-end
-```
+### `dma_done` Sticky Latch
 
-The latch is automatically cleared by the ARM's polling read — no explicit clear write is needed.
+The `done` output of `yuv_fb_dma` is a single-clock pulse (~10 ns at 100 MHz). The ARM polling loop cannot reliably catch a 10 ns pulse. 
 
-### `dma_trigger` Auto-Clear
+The `dma_done_latch` register solves this: it sets on the pulse, and is automatically cleared by the ARM's polling read (no explicit clear write is needed).
+
+### VBlank Hardware Page Flip
+
+To prevent horizontal screen tearing (ghosting) caused by the ARM's unpredictable scheduling latency, the page flip is secured entirely in the FPGA hardware.
+
+The ARM simply writes the desired buffer to the control register (offset `0x008`). This updates a staging register (`next_buf_sel`), **not** the active buffer.
+
+The active buffer (`buf_sel` routed to ASCAL) only updates when `fb_vbl` (VBlank) is high. This positively prevents `FB_BASE` from changing in the middle of active display scanning.
 
 Writing bit 1 of the Control register (`0x008`) raises `dma_trigger` for exactly one clock cycle. The write path sets it; the always block unconditionally clears it every cycle before the write path runs:
 ```verilog

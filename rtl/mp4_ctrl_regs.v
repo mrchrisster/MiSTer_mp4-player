@@ -22,6 +22,11 @@
 //    Offset 0x014  YUV U plane base address  (read/write, 32-bit byte addr)
 //    Offset 0x018  YUV V plane base address  (read/write, 32-bit byte addr)
 //    Offset 0x01C  RGB output base address   (read/write, 32-bit byte addr)
+//    Offset 0x020  Magic/version register    (read-only):
+//                    Returns 32'hA1EC0001 — confirms mp4_ctrl_regs v1 is loaded.
+//                    ARM must verify this before issuing any writes, since the
+//                    Cyclone V H2F bridge has NO timeout: writing to an absent
+//                    slave stalls the HPS CPU indefinitely (watchdog crash).
 //
 //  Typical ARM usage (mmap region at 0xFF200000):
 //    // Set up YUV planes once:
@@ -120,25 +125,30 @@ assign rlast = 1'b1;    // Always single-beat
 //=============================================================================
 reg dma_done_latch;
 reg fb_vbl_latch;
+reg fb_vbl_d;
 
 always @(posedge clk) begin
     if (!rst_n) begin
         dma_done_latch <= 1'b0;
         fb_vbl_latch   <= 1'b0;
+        fb_vbl_d       <= 1'b0;
     end else begin
         // SET has priority over CLEAR: if the pulse fires on the exact same
         // clock as the ARM's status read, the latch is SET (not cleared).
         // The ARM will see it on the next poll.  Using two independent 'if'
         // blocks would let the clear (being last in source order) win the
         // Verilog NB race, silently discarding the pulse → DMA timeout bug.
+        
+        fb_vbl_d <= fb_vbl;
+
         if (dma_done)
             dma_done_latch <= 1'b1;
-        else if (arvalid & arready & (araddr[4:2] == 3'b000))
+        else if (arvalid & arready & (araddr[5:2] == 4'b0000))
             dma_done_latch <= 1'b0;
 
-        if (fb_vbl)
+        if (fb_vbl && !fb_vbl_d)
             fb_vbl_latch   <= 1'b1;
-        else if (arvalid & arready & (araddr[4:2] == 3'b000))
+        else if (arvalid & arready & (araddr[5:2] == 4'b0000))
             fb_vbl_latch   <= 1'b0;
     end
 end
@@ -156,13 +166,14 @@ always @(posedge clk) begin
     end else begin
         if (arvalid & arready) begin
             rid <= arid;
-            case (araddr[4:2])
-                3'b000: rdata <= {28'b0, dma_done_latch, fb_vbl_latch, 2'b00}; // 0x000
-                3'b010: rdata <= {30'b0, dma_trigger, buf_sel};            // 0x008
-                3'b100: rdata <= yuv_y_base;                               // 0x010
-                3'b101: rdata <= yuv_u_base;                               // 0x014
-                3'b110: rdata <= yuv_v_base;                               // 0x018
-                3'b111: rdata <= yuv_rgb_base;                             // 0x01C
+            case (araddr[5:2])
+                4'b0000: rdata <= {28'b0, dma_done_latch, fb_vbl_latch, 2'b00}; // 0x000
+                4'b0010: rdata <= {30'b0, dma_trigger, buf_sel};            // 0x008
+                4'b0100: rdata <= yuv_y_base;                               // 0x010
+                4'b0101: rdata <= yuv_u_base;                               // 0x014
+                4'b0110: rdata <= yuv_v_base;                               // 0x018
+                4'b0111: rdata <= yuv_rgb_base;                             // 0x01C
+                4'b1000: rdata <= 32'hA1EC0001;                             // 0x020 magic
                 default: rdata <= 32'b0;
             endcase
             rvalid <= 1'b1;
@@ -181,6 +192,9 @@ reg [11:0] awid_lat = 12'b0;
 reg        w_pend   = 1'b0;
 reg [31:0] wd_lat   = 32'b0;
 
+// Staging register for hardware page flip
+reg next_buf_sel;
+
 assign awready = !aw_pend && !bvalid;
 assign wready  = !w_pend  && !bvalid;
 
@@ -191,12 +205,19 @@ always @(posedge clk) begin
         bvalid      <= 1'b0;
         bid         <= 12'b0;
         buf_sel     <= 1'b0;
+        next_buf_sel<= 1'b0;
         dma_trigger <= 1'b0;
         yuv_y_base  <= 32'h3012C000;  // default layout after RGB buffers
         yuv_u_base  <= 32'h30177000;
         yuv_v_base  <= 32'h30189C00;
         yuv_rgb_base<= 32'h30000000;  // default: write to Buffer A
     end else begin
+        
+        // Hardware Page Flip: safely update the active buffer only during VBlank
+        // to prevent mid-frame tearing caused by ARM scheduling latency.
+        if (fb_vbl_latch) begin
+            buf_sel <= next_buf_sel;
+        end
 
         // dma_trigger is a one-clock pulse; auto-clear every cycle
         dma_trigger <= 1'b0;
@@ -218,7 +239,7 @@ always @(posedge clk) begin
         if (aw_pend & w_pend) begin
             case (aw_lat[4:2])
                 3'b010: begin                   // 0x008 Control
-                    buf_sel     <= wd_lat[0];
+                    next_buf_sel<= wd_lat[0];
                     dma_trigger <= wd_lat[1];   // one-clock pulse
                 end
                 3'b100: yuv_y_base   <= wd_lat; // 0x010

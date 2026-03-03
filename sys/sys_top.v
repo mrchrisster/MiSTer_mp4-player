@@ -336,8 +336,49 @@ cyclonev_hps_interface_hps2fpga_light_weight lwhps2fpga (
 
 wire        buf_sel;
 wire        dma_trigger;
-wire        dma_done;
 wire [31:0] yuv_y_base, yuv_u_base, yuv_v_base, yuv_rgb_base;
+
+// ── Clock-domain synchronisers: dma_trigger/dma_done ─────────────────────────
+// yuv_fb_dma, fb_arb, fb_scan_out all run at clk_sys (same as ram_clk).
+// clk_vid = CLK_VIDEO from emu = clk_sys (combinational assign in Groovy.sv),
+// but ram_clk MUST use clk_sys directly so the fpga2sdram bridge is driven by
+// the properly-routed global clock (not a module-output net).
+// Toggle synchronisers are kept; they still work correctly with same-clock
+// domains (just add 3-cycle latency, which is harmless).
+
+// dma_trigger (1-cycle clk_sys pulse) → dma_trigger_vid (1-cycle clk_vid pulse)
+reg         dma_trig_tgl = 1'b0;
+always @(posedge clk_sys) if (dma_trigger) dma_trig_tgl <= ~dma_trig_tgl;
+reg [2:0]   dma_trig_vid_r = 3'd0;
+always @(posedge clk_vid) dma_trig_vid_r <= {dma_trig_vid_r[1:0], dma_trig_tgl};
+wire        dma_trigger_vid = dma_trig_vid_r[2] ^ dma_trig_vid_r[1];
+
+// dma_done_vid (1-cycle clk_vid pulse) → dma_done (1-cycle clk_sys pulse)
+wire        dma_done_vid;            // output from yuv_fb_dma (clk_vid domain)
+reg         dma_done_tgl = 1'b0;
+always @(posedge clk_vid) if (dma_done_vid) dma_done_tgl <= ~dma_done_tgl;
+reg [2:0]   dma_done_sys_r = 3'd0;
+always @(posedge clk_sys) dma_done_sys_r <= {dma_done_sys_r[1:0], dma_done_tgl};
+wire        dma_done = dma_done_sys_r[2] ^ dma_done_sys_r[1];  // clk_sys pulse
+
+// ── Intermediate Avalon wires: arbiter separates ram1 from each master ───────
+wire [28:0] dma_avl_address;
+wire  [7:0] dma_avl_burstcount;
+wire        dma_avl_waitrequest;
+wire [63:0] dma_avl_readdata;
+wire        dma_avl_readdatavalid;
+wire        dma_avl_read;
+wire [63:0] dma_avl_writedata;
+wire  [7:0] dma_avl_byteenable;
+wire        dma_avl_write;
+
+wire [28:0] fbs_avl_address;
+wire  [7:0] fbs_avl_burstcount;
+wire        fbs_avl_waitrequest;
+wire [63:0] fbs_avl_readdata;
+wire        fbs_avl_readdatavalid;
+wire        fbs_avl_read;
+wire  [7:0] fbs_r, fbs_g, fbs_b;
 
 mp4_ctrl_regs mp4_regs (
     .clk     (clk_sys),    .rst_n   (~reset_req),
@@ -365,45 +406,87 @@ mp4_ctrl_regs mp4_regs (
     .yuv_rgb_base(yuv_rgb_base)
 );
 
-// ── Phase 1.5 YUV→RGB DMA engine — uses fpga2sdram RAM1 port (ram_*) ────────
-// The Groovy emu's own DDRAM interface is kept but permanently stalled:
-// in FB_EN mode ASCAL reads directly from the framebuffer so the emu's
-// DDRAM video-decode output is unused.  yuv_fb_dma owns RAM1 exclusively.
+// ── Phase 1.5 YUV→RGB DMA engine — shares ram1 via fb_arb ────────────────────
+// Runs at clk_sys (same as ram_clk / fb_arb / fb_scan_out).
+// trigger/done cross clk_sys↔clk_sys via toggle synchronizers (harmless latency).
 yuv_fb_dma yuv_dma (
-    .clk              (clk_sys),
+    .clk              (clk_sys),          // clk_sys; same as ram_clk
     .reset            (reset_req),
-    .trigger          (dma_trigger),
-    .done             (dma_done),
+    .trigger          (dma_trigger_vid),  // synchronized from clk_sys dma_trigger
+    .done             (dma_done_vid),     // clk_vid pulse; synced back to dma_done
     .yuv_y_base       (yuv_y_base),
     .yuv_u_base       (yuv_u_base),
     .yuv_v_base       (yuv_v_base),
     .rgb_base         (yuv_rgb_base),
-    .avl_address      (ram_address),
-    .avl_burstcount   (ram_burstcount),
-    .avl_waitrequest  (ram_waitrequest),
-    .avl_readdata     (ram_readdata),
-    .avl_readdatavalid(ram_readdatavalid),
-    .avl_read         (ram_read),
-    .avl_writedata    (ram_writedata),
-    .avl_byteenable   (ram_byteenable),
-    .avl_write        (ram_write)
+    .avl_address      (dma_avl_address),
+    .avl_burstcount   (dma_avl_burstcount),
+    .avl_waitrequest  (dma_avl_waitrequest),
+    .avl_readdata     (dma_avl_readdata),
+    .avl_readdatavalid(dma_avl_readdatavalid),
+    .avl_read         (dma_avl_read),
+    .avl_writedata    (dma_avl_writedata),
+    .avl_byteenable   (dma_avl_byteenable),
+    .avl_write        (dma_avl_write)
 );
+
+// ── yuv_fb_dma drives ram1 directly (fb_arb removed) ─────────────────────
+// fb_scan_out needs a *dedicated* fpga2sdram port per its own QSYS NOTE;
+// sharing via fb_arb caused the DMA to never complete (see fb_scan_out.sv
+// QSYS NOTE).  fb_scan_out is kept but its Avalon port is stalled below
+// until a second fpga2sdram port is added to Platform Designer.
+assign ram_address           = dma_avl_address;
+assign ram_burstcount        = dma_avl_burstcount;
+assign ram_read              = dma_avl_read;
+assign ram_write             = dma_avl_write;
+assign ram_writedata         = dma_avl_writedata;
+assign ram_byteenable        = dma_avl_byteenable;
+assign dma_avl_waitrequest   = ram_waitrequest;
+assign dma_avl_readdata      = ram_readdata;
+assign dma_avl_readdatavalid = ram_readdatavalid;
+
+// ── fb_scan_out: CRT-compatible VGA framebuffer scan-out ──────────────────
+// Reads the front RGB565 buffer from DDR3 line-by-line, synchronized to the
+// emu's native video timing.  Output muxed into the VGA native path below.
+fb_scan_out #(.W(640), .H(480), .BEATS(8'd160)) fbs (
+    .clk              (clk_sys),
+    .reset            (reset),
+    .ce_pixel         (ce_pix),
+    .de_in            (de_emu),
+    .vs_in            (vs_emu),
+    .fb_active        (fb_en),
+    .fb_base          (fb_base_sel),
+    .r_out            (fbs_r),
+    .g_out            (fbs_g),
+    .b_out            (fbs_b),
+    .avl_address      (fbs_avl_address),
+    .avl_burstcount   (fbs_avl_burstcount),
+    .avl_read         (fbs_avl_read),
+    .avl_waitrequest  (fbs_avl_waitrequest),
+    .avl_readdata     (fbs_avl_readdata),
+    .avl_readdatavalid(fbs_avl_readdatavalid)
+);
+// fb_scan_out Avalon port is stalled: dedicated DDR3 port not yet wired.
+// Output will be black (buf_ready never set) until a second
+// fpga2sdram port is added in Platform Designer and wired here.
+assign fbs_avl_waitrequest   = 1'b1;
+assign fbs_avl_readdata      = 64'd0;
+assign fbs_avl_readdatavalid = 1'b0;
 
 // ── FPGA debug UART: 1 status line/sec → HPS /dev/ttyS1 ─────────────────
 // Format: "T=HHHH D=HHHH V=HHHH W=HHHH B=H\r\n" (115200 8N1)
 //   T = dma_trigger count, D = dma_done count, V = fb_vbl count,
-//   W = Avalon write-stall cycles, B = buf_sel
+//   W = Avalon write-stall cycles (yuv_fb_dma view), B = buf_sel
 wire mp4_debug_uart_tx;
 
 mp4_debug_uart #(.CLK_FRE(83)) mp4_uart (
     .clk            (clk_sys),
     .rst_n          (~reset_req),
-    .dma_trigger    (dma_trigger),
-    .dma_done       (dma_done),
+    .dma_trigger    (dma_trigger),       // clk_sys pulse (from mp4_ctrl_regs)
+    .dma_done       (dma_done),          // clk_sys pulse (synchronized from clk_vid)
     .fb_vbl         (fb_vbl_sys),
-    .ram_waitrequest(ram_waitrequest),
-    .ram_read       (ram_read),
-    .ram_write      (ram_write),
+    .ram_waitrequest(dma_avl_waitrequest), // yuv_fb_dma's stall view
+    .ram_read       (dma_avl_read),
+    .ram_write      (dma_avl_write),
     .buf_sel        (buf_sel),
     .tx_pin         (mp4_debug_uart_tx)
 );
@@ -1479,6 +1562,31 @@ assign HDMI_TX_D  = hdmi_out_d;
 	);
 `endif
 
+// ── CRT scan-out mux: substitute fb_scan_out pixels + 2-cycle timing delay ──
+// fb_scan_out has 2-cycle pipeline latency (BRAM read + output register).
+// When fb_en=1, delay HS/VS/DE by 2 ce_pix ticks so they stay aligned with
+// the framebuffer r/g/b output.  In core mode (fb_en=0) the delay is bypassed.
+`ifdef MISTER_FB
+reg fbs_de1, fbs_de2, fbs_hs1, fbs_hs2, fbs_vs1, fbs_vs2;
+always @(posedge clk_vid) begin
+    if (ce_pix) begin
+        {fbs_de2, fbs_de1} <= {fbs_de1, de_emu};
+        {fbs_hs2, fbs_hs1} <= {fbs_hs1, hs_fix};
+        {fbs_vs2, fbs_vs1} <= {fbs_vs1, vs_fix};
+    end
+end
+wire        de_sl_in  = fb_en ? fbs_de2 : de_emu;
+wire        hs_sl_in  = fb_en ? fbs_hs2 : hs_fix;
+wire        vs_sl_in  = fb_en ? fbs_vs2 : vs_fix;
+wire [23:0] pix_sl_in = de_sl_in ? (fb_en ? {fbs_r, fbs_g, fbs_b}
+                                           : {r_out, g_out, b_out}) : 24'd0;
+`else
+wire        de_sl_in  = de_emu;
+wire        hs_sl_in  = hs_fix;
+wire        vs_sl_in  = vs_fix;
+wire [23:0] pix_sl_in = de_emu ? {r_out, g_out, b_out} : 24'd0;
+`endif
+
 wire [23:0] vga_data_sl;
 wire        vga_de_sl, vga_ce_sl, vga_vs_sl, vga_hs_sl;
 scanlines #(0) VGA_scanlines
@@ -1486,10 +1594,10 @@ scanlines #(0) VGA_scanlines
 	.clk(clk_vid),
 
 	.scanlines(scanlines),
-	.din(de_emu ? {r_out, g_out, b_out} : 24'd0),
-	.hs_in(hs_fix),
-	.vs_in(vs_fix),
-	.de_in(de_emu),
+	.din(pix_sl_in),
+	.hs_in(hs_sl_in),
+	.vs_in(vs_sl_in),
+	.de_in(de_sl_in),
 	.ce_in(ce_pix),
 
 	.dout(vga_data_sl),
@@ -1800,7 +1908,7 @@ wire        ram_read;
 wire [63:0] ram_writedata;
 wire [7:0]  ram_byteenable;
 wire        ram_write;
-assign ram_clk = clk_sys;
+assign ram_clk = clk_sys;   // fpga2sdram bridge must use global clock clk_sys
 
 // Stub wires for the Groovy emu's DDRAM interface.
 // We permanently stall it (DDRAM_BUSY=1) so yuv_fb_dma has exclusive bus

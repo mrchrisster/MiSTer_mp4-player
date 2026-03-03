@@ -56,7 +56,7 @@ ARM (Cortex-A9):                   FPGA (Cyclone V):
 | Buffer A | `0x30000000` | 614,400 bytes |
 | Buffer B | `0x30096000` | 614,400 bytes |
 
-`buf_sel` (AXI control register bit 0) selects which buffer ASCAL displays. The daemon writes into the back buffer while ASCAL reads the front buffer.
+`buf_sel` (AXI control register bit 0) queues the next buffer for ASCAL to display. The FPGA hardware handles the latency-proof page flip on the next VBlank. The daemon writes into the back buffer while ASCAL reads the front buffer.
 
 #### YUV Planes (written by ARM, read by FPGA DMA)
 
@@ -101,7 +101,7 @@ H2F Lightweight AXI bridge at physical `0xFF200000`:
 | Offset | ARM index | Access | Description |
 |---|---|---|---|
 | `0x000` | `axi[0]` | Read | **Status** — bit 2 = `fb_vbl` (VBlank pulse, CDC'd); bit 3 = `dma_done` (sticky latch, clears on read) |
-| `0x008` | `axi[2]` | R/W | **Control** — bit 0 = `buf_sel` (0=A, 1=B); bit 1 = `dma_trigger` (write 1 to start, auto-clears) |
+| `0x008` | `axi[2]` | R/W | **Control** — bit 0 = `next_buf_sel` (0=A, 1=B); bit 1 = `dma_trigger` (write 1 to start, auto-clears) |
 | `0x010` | `axi[4]` | R/W | **YUV Y base** — DDR3 byte address of Y plane |
 | `0x014` | `axi[5]` | R/W | **YUV U base** — DDR3 byte address of U plane |
 | `0x018` | `axi[6]` | R/W | **YUV V base** — DDR3 byte address of V plane |
@@ -116,16 +116,18 @@ In MP4 mode the ASCAL reads directly from the framebuffer. `Groovy.sv` uses DDRA
 ### B. The ARM Background Daemon (`h264-daemon/main.cpp`)
 
 * **Input:** MP4 file path as CLI argument.
-* **Decode:** `libavformat` + `libavcodec` — H.264 (and any FFmpeg codec). Output format: `AV_PIX_FMT_YUV420P`.
-* **Scale:** Nearest-neighbour software scale of Y/U/V planes to 640×480 / 320×240. No `libswscale` — direct index arithmetic.
-* **Write:** `memcpy` scaled planes to uncached DDR3 (`O_SYNC` mmap) at 0x3012C000.
+* **Decode:** `libavformat` + `libavcodec` — H.264 (and any FFmpeg codec). Output format: `AV_PIX_FMT_YUV420P`. Fast flags: `skip_loop_filter=AVDISCARD_ALL`, `AV_CODEC_FLAG2_FAST`.
+* **Decode-ahead threading:** decoder runs on Core 1, display/DMA on Core 0 via a `FrameQueue` ring of 2 `AVFrame*` slots + pthread condvars. Wall time ≈ `max(decode, scale+DMA+VBL)` instead of the sequential sum.
+* **Scale:** Nearest-neighbour via precomputed LUTs (`uint16_t x_map[640]`, `y_map[480]`, etc.), rebuilt only on source resolution change. Identity fast-path when src == 640×480: rows `memcpy`'d directly to DDR3 without a temporary buffer.
+* **Write:** scaled planes written to uncached DDR3 (`O_SYNC` mmap) at `0x3012C000`. `dmb sy` issued before DMA trigger to drain the ARM AXI write buffer.
 * **Trigger FPGA DMA:**
-  - Write `yuv_rgb_base` register (AXI `axi[7]`) to back-buffer physical address.
-  - Write `dma_trigger` bit in control register.
-  - Spin-poll `dma_done` bit in status register (sticky, so never missed).
-* **Frame pacing:** Master-clock PTS sync — `target_us = start_wall_us + (frame_pts - start_pts) * 1e6`. Drops frames more than half a frame period late.
-* **VSync page flip:** Spin on `fb_vbl` bit → write `buf_sel` at VBlank edge.
-* **Timing report** (stderr): `YUV+DMA avg` shows combined memcpy + FPGA DMA time per frame.
+  - Write `yuv_rgb_base` register (`axi[7]`) to back-buffer physical address.
+  - Write `dma_trigger` bit in control register (posted write — safe even if no slave present).
+  - Spin-poll `dma_done` bit with 200 ms timeout. Timeout sets `g_stop=1` and exits gracefully.
+* **Frame pacing:** Master-clock PTS sync — `target_us = start_wall_us + (frame_pts - start_pts) * 1e6`. Drops frames more than **one full frame period** late. Clock re-anchored after each drop to prevent cascade drops.
+* **VSync page flip:** Spin on `fb_vbl` bit (50 ms timeout — proceeds without vsync if FB_EN not active) → write `buf_sel` at VBlank edge.
+* **Startup AXI access:** only writes (posted, never hang). No startup reads. The 200 ms DMA timeout is the sole runtime guard against a mismatched bitstream.
+* **Timing report** (stderr): `YUV+DMA avg` and `VBL wait avg` per displayed frame; `Decode avg` from decoder thread.
 
 ### C. Daemon Usage
 

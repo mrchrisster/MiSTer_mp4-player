@@ -9,10 +9,12 @@
       "Read(//c/Users/christoph/AppData/Local/Temp/claude/c--code-MiSTer-mp4-player/tasks/**)",
       "WebFetch(domain:github.com)",
       "Bash(ls c:/code/MiSTer_mp4_player/sys/*.qsys)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Read(//c/Users/christoph/.claude/projects/c--code-MiSTer-mp4-player/memory/**)"
     ],
     "additionalDirectories": [
-      "c:\\code\\mpeg2fpga-master\\rtl"
+      "c:\\code\\mpeg2fpga-master\\rtl",
+      "c:\\Users\\christoph\\.claude\\projects\\c--code-MiSTer-mp4-player\\memory"
     ]
   }
 }

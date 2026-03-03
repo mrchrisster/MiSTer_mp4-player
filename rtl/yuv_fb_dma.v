@@ -79,13 +79,13 @@ parameter RGB_BEATS   = 8'd160;   // 1280 B / 8 = 160
 localparam PIPE_LAT    = 5;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Line buffers  (Quartus infers as RAM — M9K or distributed depending on size)
+// Line buffers  (Quartus infers as distributed logic — correct for combinational reads)
 // ─────────────────────────────────────────────────────────────────────────────
 reg [7:0] y_buf  [0:W-1];        // 640 B — one luma row
 reg [7:0] u_buf  [0:(W/2)-1];    // 320 B — one Cb row  (reused 2× per UV pair)
 reg [7:0] v_buf  [0:(W/2)-1];    // 320 B — one Cr row
 
-// RGB output row buffer.  Index 2k = high byte of pixel k, 2k+1 = low byte.
+// RGB output row buffer.  Index 2k = low byte of pixel k, 2k+1 = high byte.
 reg [7:0] rgb_buf [0:(W*2)-1];   // 1280 B
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -328,9 +328,9 @@ always @(posedge clk) begin
 
             // Collect pipeline output into rgb_buf
             if (pipe_vout) begin
-                // Big-endian: high byte at lower address
-                rgb_buf[{rgb_wr_px[9:0], 1'b0}] <= pipe_rgb[15:8];
-                rgb_buf[{rgb_wr_px[9:0], 1'b1}] <= pipe_rgb[ 7:0];
+                // Little-endian: low byte at even index (matches ARM/ASCAL byte order)
+                rgb_buf[{rgb_wr_px[9:0], 1'b0}] <= pipe_rgb[ 7:0];
+                rgb_buf[{rgb_wr_px[9:0], 1'b1}] <= pipe_rgb[15:8];
                 if (rgb_wr_px == W - 1) begin
                     // Last pixel collected — move to write phase
                     wr_beat      <= 8'd0;
