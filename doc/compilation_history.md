@@ -124,6 +124,21 @@ and the test results. Use this to avoid revisiting dead ends.
      combinational reads — would cause 1-cycle stale data. Distributed
      logic (registers) is correct.
 - **Expected result:** Grayscale gradient from test_color. Correct colors from video.
+- **Actual result:** ✅ **COLORS FIXED!** test_color shows correct grayscale (2.5 gradient cycles across 640 pixels). Real video shows correct colors but **ghosting** (main image centered with ~5 squished copies left/right).
+
+### h264_6 (2026-03-02 TBD) — PENDING TEST
+- **File:** `releases/Groovy_h264_6_YYYYMMDD_HHMM.rbf`
+- **Changes:** Fixed ASCAL input resolution mismatch
+  1. **Changed Groovy core default video timing from 256×240 to 640×480:**
+     - The ASCAL auto-detects input resolution from video timing signals (de_emu/hs_fix/vs_fix)
+     - Old default: PoC_H=256, PoC_V=240 (Sega Master System native)
+     - New default: PoC_H=640, PoC_V=480 (matches FB_WIDTH/FB_HEIGHT)
+     - Updated PoC_HFP/PoC_HS/PoC_HBP and PoC_VFP/PoC_VS/PoC_VBP to VGA timings
+     - Updated PoC_ce_pix from 16 to 4 (pixel clock 25 MHz for 640×480@60Hz)
+  2. **Root cause of ghosting:** ASCAL detected input as 256×240 but framebuffer was 640×480.
+     The scaler tried to fit a 640-pixel-wide framebuffer into a 256-pixel input area,
+     creating 640/256 = 2.5 wrapping copies, which with edge artifacts appeared as ~5 copies.
+- **Expected result:** No more ghosting. Clean video display.
 
 ---
 
@@ -154,3 +169,9 @@ and the test results. Use this to avoid revisiting dead ends.
 
 5. **devmem reads are little-endian on ARM.** When interpreting devmem output,
    remember: result[7:0] = DDR3[addr+0], result[15:8] = DDR3[addr+1].
+
+6. **ASCAL input resolution must match framebuffer resolution.** The ASCAL auto-detects
+   input video resolution (iauto=1) from the core's timing signals. If the core outputs
+   256×240 but the framebuffer is 640×480, the ASCAL creates wrapping/tiling artifacts.
+   **Test patterns can hide this** — a repeating gradient looks fine even when tiled,
+   but real video with distinct features shows ghosting/multiple copies.

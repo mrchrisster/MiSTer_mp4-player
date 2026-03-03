@@ -2,15 +2,17 @@
 
 ## MP4 Player (this fork)
 
-This fork adds native `.mp4` (H.264) playback to the Groovy_MiSTer core. Video is decoded on
-the ARM Cortex-A9 using FFmpeg, and color-space conversion (YUV→RBG565) is offloaded to
+This fork adds native `.mp4` (H.264/AAC) playback to the Groovy_MiSTer core. Media is decoded on
+the ARM Cortex-A9 using FFmpeg, and color-space conversion (YUV→BGR565) is offloaded to
 FPGA hardware. The ASCAL scaler reads directly from a double DDR3 framebuffer and outputs to HDMI.
+Fully synchronized audio is supported and routed to the MiSTer ALSA mixer.
 
 **Key characteristics:**
 - No terminal interaction required — video selected from MiSTer OSD
-- BT.601 limited-range YUV420P → RBG565 conversion in Cyclone V DSP blocks (4-stage pipeline, 1 px/clock)
-- Double-buffered 640×480 @ 30fps with VSync-locked page flip
-- ARM CPU free from pixel math; handles only H.264 decode and nearest-neighbour scaling
+- BT.601 limited-range YUV420P → BGR565 conversion in Cyclone V DSP blocks (4-stage pipeline, 1 px/clock)
+- Double-buffered 640×480 @ 30fps with hardware-enforced VBlank page flipping to guarantee 0 tearing/ghosting
+- ARM CPU free from pixel math; handles only H.264/AAC decode and nearest-neighbour chroma scaling
+- Smooth PTS-based A/V sync natively outputting via the core's ALSA DACs.
 - `mp4_play` — static ARM32 binary, no library dependencies on MiSTer Linux
 
 **Quick start:**

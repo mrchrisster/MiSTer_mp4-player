@@ -2,6 +2,9 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/opt.h>
+#include <libswresample/swresample.h>
+#include <alsa/asoundlib.h>
 }
 
 #include <fcntl.h>
@@ -231,64 +234,301 @@ struct FrameQueue {
     pthread_cond_t  not_full;   // signalled when count 2 -> 1
 };
 
+// ── Audio frame queue ─────────────────────────────────────────────────────────
+// Ring buffer for decoded audio frames. Audio thread pulls frames and writes
+// to ALSA. Audio PTS becomes the master clock for video sync.
+struct AudioQueue {
+    AVFrame*        f[64];      // ring of 64 audio frames (~1.3s buffer @ 1024 samples/frame)
+    double          pts_s[64];  // PTS seconds for each slot
+    int             head;       // audio thread reads from f[head]
+    int             count;      // 0..4 frames ready
+    bool            eof;        // decoder finished all audio
+    pthread_mutex_t mu;
+    pthread_cond_t  not_empty;
+    pthread_cond_t  not_full;
+};
+
 struct DecodeArgs {
-    FrameQueue*       q;
+    FrameQueue*       vq;       // video queue
+    AudioQueue*       aq;       // audio queue (NULL if no audio)
     AVFormatContext*  fmt;
-    AVCodecContext*   dec;
+    AVCodecContext*   vdec;     // video decoder
+    AVCodecContext*   adec;     // audio decoder (NULL if no audio)
     int               vstream;
-    AVRational        tb;
-    volatile int64_t* t_decode_us;  // accumulated by decoder, read at end
-    volatile int*     total_frames; // all decoded frames (including drops)
+    int               astream;  // -1 if no audio
+    AVRational        vtb;      // video timebase
+    AVRational        atb;      // audio timebase
+    volatile int64_t* t_decode_us;
+    volatile int*     total_frames;
 };
 
 static void* decode_thread_fn(void* arg)
 {
-    DecodeArgs*  a   = (DecodeArgs*)arg;
-    FrameQueue*  q   = a->q;
-    AVPacket*    pkt = av_packet_alloc();
-    AVFrame*     frm = av_frame_alloc();
+    DecodeArgs*  a    = (DecodeArgs*)arg;
+    FrameQueue*  vq   = a->vq;
+    AudioQueue*  aq   = a->aq;
+    AVPacket*    pkt  = av_packet_alloc();
+    AVFrame*     vfrm = av_frame_alloc();
+    AVFrame*     afrm = (aq != NULL) ? av_frame_alloc() : NULL;
 
     while (!g_stop) {
         if (av_read_frame(a->fmt, pkt) < 0) break;
-        if (pkt->stream_index != a->vstream) { av_packet_unref(pkt); continue; }
 
-        const int64_t t0 = now_us();
-        avcodec_send_packet(a->dec, pkt);
-        av_packet_unref(pkt);
+        // ── Video packet ───────────────────────────────────────────────────────
+        if (pkt->stream_index == a->vstream) {
+            const int64_t t0 = now_us();
+            avcodec_send_packet(a->vdec, pkt);
+            av_packet_unref(pkt);
 
-        while (!g_stop && avcodec_receive_frame(a->dec, frm) == 0) {
-            *a->t_decode_us += now_us() - t0;
-            (*a->total_frames)++;
+            while (!g_stop && avcodec_receive_frame(a->vdec, vfrm) == 0) {
+                *a->t_decode_us += now_us() - t0;
+                (*a->total_frames)++;
 
-            if (frm->pts == AV_NOPTS_VALUE) { av_frame_unref(frm); continue; }
+                if (vfrm->pts == AV_NOPTS_VALUE) { av_frame_unref(vfrm); continue; }
 
-            const double pts = frm->pts * av_q2d(a->tb);
+                const double pts = vfrm->pts * av_q2d(a->vtb);
 
-            pthread_mutex_lock(&q->mu);
-            while (q->count == 2 && !g_stop)
-                pthread_cond_wait(&q->not_full, &q->mu);
-            if (g_stop) { pthread_mutex_unlock(&q->mu); goto done; }
+                pthread_mutex_lock(&vq->mu);
+                while (vq->count == 2 && !g_stop)
+                    pthread_cond_wait(&vq->not_full, &vq->mu);
+                if (g_stop) { pthread_mutex_unlock(&vq->mu); goto done; }
 
-            // Move decoded refs into queue slot (slot is always empty here —
-            // display thread guarantees it by replacing the taken slot with a
-            // fresh av_frame_alloc before signalling not_full).
-            const int slot = (q->head + q->count) & 1;
-            av_frame_move_ref(q->f[slot], frm);   // frm is now empty
-            q->pts_s[slot] = pts;
-            q->count++;
-            pthread_cond_signal(&q->not_empty);
-            pthread_mutex_unlock(&q->mu);
+                const int slot = (vq->head + vq->count) & 1;
+                av_frame_move_ref(vq->f[slot], vfrm);
+                vq->pts_s[slot] = pts;
+                vq->count++;
+                pthread_cond_signal(&vq->not_empty);
+                pthread_mutex_unlock(&vq->mu);
+            }
+        }
+        // ── Audio packet ───────────────────────────────────────────────────────
+        else if (aq != NULL && pkt->stream_index == a->astream) {
+            avcodec_send_packet(a->adec, pkt);
+            av_packet_unref(pkt);
+
+            while (!g_stop && avcodec_receive_frame(a->adec, afrm) == 0) {
+                if (afrm->pts == AV_NOPTS_VALUE) { av_frame_unref(afrm); continue; }
+
+                const double pts = afrm->pts * av_q2d(a->atb);
+
+                pthread_mutex_lock(&aq->mu);
+                while (aq->count == 64 && !g_stop)
+                    pthread_cond_wait(&aq->not_full, &aq->mu);
+                if (g_stop) { pthread_mutex_unlock(&aq->mu); goto done; }
+
+                const int slot = (aq->head + aq->count) & 63;
+                av_frame_move_ref(aq->f[slot], afrm);
+                aq->pts_s[slot] = pts;
+                aq->count++;
+                pthread_cond_signal(&aq->not_empty);
+                pthread_mutex_unlock(&aq->mu);
+            }
+        } else {
+            av_packet_unref(pkt);
         }
     }
 
 done:
-    pthread_mutex_lock(&q->mu);
-    q->eof = true;
-    pthread_cond_signal(&q->not_empty);
-    pthread_mutex_unlock(&q->mu);
+    pthread_mutex_lock(&vq->mu);
+    vq->eof = true;
+    pthread_cond_signal(&vq->not_empty);
+    pthread_mutex_unlock(&vq->mu);
 
-    av_frame_free(&frm);
+    if (aq != NULL) {
+        pthread_mutex_lock(&aq->mu);
+        aq->eof = true;
+        pthread_cond_signal(&aq->not_empty);
+        pthread_mutex_unlock(&aq->mu);
+    }
+
+    if (afrm) av_frame_free(&afrm);
+    av_frame_free(&vfrm);
     av_packet_free(&pkt);
+    return NULL;
+}
+
+// ── Audio playback arguments and thread ───────────────────────────────────────
+struct AudioPlayArgs {
+    AudioQueue*            aq;
+    AVCodecContext*        adec;
+    volatile double*       audio_clock_s;       // updated by audio thread, read by video
+    volatile bool*         audio_clock_valid;   // true after first frame played
+    volatile bool*         start_playback;      // signal from video thread to start ALSA output
+    const char*            alsa_device;
+};
+
+// Pulls decoded audio frames from AudioQueue, resamples to 48kHz stereo if
+// needed, and writes to ALSA. Audio PTS becomes the master clock.
+static void* audio_play_thread_fn(void* arg)
+{
+    AudioPlayArgs* a = (AudioPlayArgs*)arg;
+    AudioQueue*    aq = a->aq;
+
+    // ── Pre-playback: consume frames without output (prevents queue deadlock) ─
+    fprintf(stderr, "[audio] thread ready, consuming frames until first video frame...\n");
+    while (!*a->start_playback && !g_stop) {
+        pthread_mutex_lock(&aq->mu);
+        if (aq->count > 0) {
+            // Discard frame (keep queue flowing to prevent decode thread deadlock)
+            AVFrame* frame = aq->f[aq->head];
+            AVFrame* fresh = av_frame_alloc();
+            if (fresh) {
+                aq->f[aq->head] = fresh;
+                aq->head = (aq->head + 1) & 63;  // 64-element queue
+                aq->count--;
+                pthread_cond_signal(&aq->not_full);
+                av_frame_free(&frame);
+            }
+        }
+        pthread_mutex_unlock(&aq->mu);
+        sleep_us(1000);  // 1ms poll
+    }
+    if (g_stop) {
+        return NULL;
+    }
+    fprintf(stderr, "[audio] first video frame ready, initializing ALSA...\n");
+
+    // ── ALSA setup ─────────────────────────────────────────────────────────────
+    snd_pcm_t* pcm = NULL;
+    if (snd_pcm_open(&pcm, a->alsa_device, SND_PCM_STREAM_PLAYBACK, 0) < 0) {
+        fprintf(stderr, "[audio] FATAL: snd_pcm_open(%s) failed\n", a->alsa_device);
+        return NULL;
+    }
+
+    const unsigned int rate     = 48000;
+    const unsigned int channels = 2;
+    if (snd_pcm_set_params(pcm, SND_PCM_FORMAT_S16_LE, SND_PCM_ACCESS_RW_INTERLEAVED,
+                           channels, rate, 1, 100000) < 0) {
+        fprintf(stderr, "[audio] FATAL: snd_pcm_set_params failed\n");
+        snd_pcm_close(pcm);
+        return NULL;
+    }
+
+    fprintf(stderr, "[audio] ALSA opened: %s  48kHz stereo S16_LE\n", a->alsa_device);
+
+    // ── Resampler setup (only if source format differs) ───────────────────────
+    SwrContext* swr = NULL;
+    if (a->adec->sample_rate != (int)rate || a->adec->channels != (int)channels
+        || a->adec->sample_fmt != AV_SAMPLE_FMT_S16) {
+        swr = swr_alloc();
+        av_opt_set_int(swr, "in_channel_layout",  a->adec->channel_layout, 0);
+        av_opt_set_int(swr, "out_channel_layout", AV_CH_LAYOUT_STEREO, 0);
+        av_opt_set_int(swr, "in_sample_rate",     a->adec->sample_rate, 0);
+        av_opt_set_int(swr, "out_sample_rate",    rate, 0);
+        av_opt_set_sample_fmt(swr, "in_sample_fmt",  a->adec->sample_fmt, 0);
+        av_opt_set_sample_fmt(swr, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
+        swr_init(swr);
+        fprintf(stderr, "[audio] resampler: %d Hz %d ch -> 48000 Hz 2 ch\n",
+                a->adec->sample_rate, a->adec->channels);
+    }
+
+    uint8_t* resample_buf = NULL;
+    int      resample_capacity = 0;
+    int64_t  total_samples_written = 0;  // cumulative samples for clock tracking
+    int      frame_count = 0;
+    double   first_pts_s = -1.0;  // PTS of first audio frame (for clock offset)
+
+    // ── Playback loop ──────────────────────────────────────────────────────────
+    while (!g_stop) {
+        pthread_mutex_lock(&aq->mu);
+        while (aq->count == 0 && !aq->eof && !g_stop)
+            pthread_cond_wait(&aq->not_empty, &aq->mu);
+
+        if ((aq->count == 0 && aq->eof) || g_stop) {
+            pthread_mutex_unlock(&aq->mu);
+            break;
+        }
+
+        AVFrame* frame = aq->f[aq->head];
+        double   pts_s = aq->pts_s[aq->head];
+
+        // Capture first PTS to align audio clock with stream
+        if (first_pts_s < 0.0) {
+            first_pts_s = pts_s;
+            fprintf(stderr, "[audio] first frame PTS=%.3f (clock offset)\n", first_pts_s);
+        }
+        AVFrame* fresh = av_frame_alloc();
+        if (!fresh) {
+            pthread_mutex_unlock(&aq->mu);
+            fprintf(stderr, "[audio] FATAL: av_frame_alloc OOM\n");
+            break;
+        }
+        aq->f[aq->head] = fresh;
+        aq->head = (aq->head + 1) & 63;
+        aq->count--;
+        pthread_cond_signal(&aq->not_full);
+        pthread_mutex_unlock(&aq->mu);
+
+        // Debug: check input frame samples BEFORE resampling
+        if (frame_count < 3) {
+            const float* in_samples = (const float*)frame->data[0];  // fltp format
+            fprintf(stderr, "[audio] PRE-resample frame %d: format=%d nb_samples=%d  in[0]=%.6f in[1]=%.6f\n",
+                    frame_count, frame->format, frame->nb_samples, in_samples[0], in_samples[1]);
+        }
+
+        // ── Resample or direct copy ────────────────────────────────────────────
+        const uint8_t* samples;
+        int nb_samples;
+
+        if (swr != NULL) {
+            const int needed = av_samples_get_buffer_size(NULL, channels, frame->nb_samples,
+                                                          AV_SAMPLE_FMT_S16, 0);
+            if (needed > resample_capacity) {
+                resample_buf = (uint8_t*)realloc(resample_buf, needed);
+                resample_capacity = needed;
+            }
+            uint8_t* out_ptr = resample_buf;
+            nb_samples = swr_convert(swr, &out_ptr, frame->nb_samples,
+                                     (const uint8_t**)frame->data, frame->nb_samples);
+            samples = resample_buf;
+        } else {
+            samples = frame->data[0];
+            nb_samples = frame->nb_samples;
+        }
+
+        // ── Write to ALSA ──────────────────────────────────────────────────────
+        snd_pcm_sframes_t written = snd_pcm_writei(pcm, samples, nb_samples);
+        if (written < 0) {
+            snd_pcm_recover(pcm, written, 0);
+        } else {
+            total_samples_written += written;
+        }
+
+        // ── Update master audio clock ──────────────────────────────────────────
+        // Clock = first_pts + (samples_played / rate)
+        // This aligns the audio clock with the stream's PTS timeline
+        snd_pcm_sframes_t delay = 0;
+        snd_pcm_delay(pcm, &delay);
+        if (delay < 0) delay = 0;
+
+        int64_t samples_actually_played = total_samples_written - delay;
+        if (samples_actually_played < 0) samples_actually_played = 0;
+
+        *a->audio_clock_s = first_pts_s + (double)samples_actually_played / rate;
+
+        // Mark audio clock as valid after first frame (allows video sync to start)
+        if (!*a->audio_clock_valid) {
+            *a->audio_clock_valid = true;
+            fprintf(stderr, "[audio] clock now valid (video can sync)\n");
+        }
+
+        // Debug: show first few frames
+        if (frame_count < 3) {
+            const int16_t* s16 = (const int16_t*)samples;
+            fprintf(stderr, "[audio] frame %d: pts=%.3f nb_samples=%d written=%ld delay=%ld clock=%.3f  sample[0]=%d sample[1]=%d\n",
+                    frame_count, pts_s, nb_samples, (long)written, (long)delay, *a->audio_clock_s, s16[0], s16[1]);
+        }
+        frame_count++;
+
+        av_frame_free(&frame);
+    }
+
+    // ── Cleanup ────────────────────────────────────────────────────────────────
+    if (swr) swr_free(&swr);
+    free(resample_buf);
+    snd_pcm_drain(pcm);
+    snd_pcm_close(pcm);
+    fprintf(stderr, "[audio] playback thread done\n");
     return NULL;
 }
 
@@ -296,7 +536,7 @@ done:
 static void play_video(const char* path,
                        volatile uint32_t* axi,
                        uint8_t* yuv_y, uint8_t* yuv_u, uint8_t* yuv_v,
-                       bool benchmark, int threads, double seek_s)
+                       bool benchmark, int threads, double seek_s, bool no_audio)
 {
     int front = 0, back = 1;
 
@@ -307,28 +547,59 @@ static void play_video(const char* path,
     }
     avformat_find_stream_info(fmt, NULL);
 
-    int vstream = -1;
-    for (unsigned i = 0; i < fmt->nb_streams; i++)
-        if (fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
-            { vstream = i; break; }
+    // ── Find video and audio streams ──────────────────────────────────────────
+    int vstream = -1, astream = -1;
+    for (unsigned i = 0; i < fmt->nb_streams; i++) {
+        if (fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO && vstream == -1)
+            vstream = i;
+        else if (!no_audio && fmt->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && astream == -1)
+            astream = i;
+    }
     if (vstream == -1) {
         fprintf(stderr, "No video stream\n");
         avformat_close_input(&fmt);
         return;
     }
 
-    AVCodecParameters* par   = fmt->streams[vstream]->codecpar;
-    const AVCodec*     codec = avcodec_find_decoder(par->codec_id);
-    AVCodecContext*    dec   = avcodec_alloc_context3(codec);
-    avcodec_parameters_to_context(dec, par);
-    dec->thread_count      = threads;
-    dec->skip_loop_filter  = AVDISCARD_ALL;        // skip H.264 deblock: -15-25% decode time
-    dec->flags2           |= AV_CODEC_FLAG2_FAST;  // non-spec-compliant fast paths: -5-10%
-    if (avcodec_open2(dec, codec, NULL) < 0) {
-        fprintf(stderr, "Could not open codec\n");
-        avcodec_free_context(&dec);
+    // ── Open video decoder ─────────────────────────────────────────────────────
+    AVCodecParameters* vpar   = fmt->streams[vstream]->codecpar;
+    const AVCodec*     vcodec = avcodec_find_decoder(vpar->codec_id);
+    AVCodecContext*    vdec   = avcodec_alloc_context3(vcodec);
+    avcodec_parameters_to_context(vdec, vpar);
+    vdec->thread_count      = threads;
+    vdec->skip_loop_filter  = AVDISCARD_ALL;
+    vdec->flags2           |= AV_CODEC_FLAG2_FAST;
+    if (avcodec_open2(vdec, vcodec, NULL) < 0) {
+        fprintf(stderr, "Could not open video codec\n");
+        avcodec_free_context(&vdec);
         avformat_close_input(&fmt);
         return;
+    }
+
+    // ── Open audio decoder (if audio stream exists) ────────────────────────────
+    AVCodecContext* adec = NULL;
+    if (astream != -1) {
+        AVCodecParameters* apar   = fmt->streams[astream]->codecpar;
+        fprintf(stderr, "[audio] found stream #%d, codec_id=%d\n", astream, apar->codec_id);
+        const AVCodec*     acodec = avcodec_find_decoder(apar->codec_id);
+        if (acodec) {
+            adec = avcodec_alloc_context3(acodec);
+            avcodec_parameters_to_context(adec, apar);
+            if (avcodec_open2(adec, acodec, NULL) < 0) {
+                fprintf(stderr, "[audio] could not open codec, disabling audio\n");
+                avcodec_free_context(&adec);
+                adec = NULL;
+                astream = -1;
+            } else {
+                fprintf(stderr, "[audio] codec: %s  %d Hz  %d ch\n",
+                        acodec->name, adec->sample_rate, adec->channels);
+            }
+        } else {
+            fprintf(stderr, "[audio] decoder not available for codec_id=%d, disabling audio\n", apar->codec_id);
+            astream = -1;
+        }
+    } else {
+        fprintf(stderr, "[audio] no audio stream found\n");
     }
 
     if (seek_s != 0.0) {
@@ -338,13 +609,15 @@ static void play_video(const char* path,
         if (eff > 0.0) {
             avformat_seek_file(fmt, -1, INT64_MIN,
                                (int64_t)(eff * AV_TIME_BASE), INT64_MAX, 0);
-            avcodec_flush_buffers(dec);
+            avcodec_flush_buffers(vdec);
+            if (adec) avcodec_flush_buffers(adec);
             fprintf(stderr, "[mp4_play] seeked to %.1f s\n", eff);
         }
     }
 
-    fprintf(stderr, "[mp4_play] %s  %dx%d  threads=%d  mode=%s\n",
-            path, dec->width, dec->height, dec->thread_count,
+    fprintf(stderr, "[mp4_play] %s  %dx%d  threads=%d  audio=%s  mode=%s\n",
+            path, vdec->width, vdec->height, vdec->thread_count,
+            no_audio ? "disabled" : (adec ? "yes" : "no"),
             benchmark ? "BENCHMARK" : "PLAY");
 
     // ── BENCHMARK MODE: decode-only, no display ───────────────────────────────
@@ -358,9 +631,9 @@ static void play_video(const char* path,
 
         while (!g_stop && !done && av_read_frame(fmt, pkt) >= 0) {
             if (pkt->stream_index != vstream) { av_packet_unref(pkt); continue; }
-            avcodec_send_packet(dec, pkt);
+            avcodec_send_packet(vdec, pkt);
             av_packet_unref(pkt);
-            while (!g_stop && !done && avcodec_receive_frame(dec, frm) == 0) {
+            while (!g_stop && !done && avcodec_receive_frame(vdec, frm) == 0) {
                 if (count == 0) bm_start = now_us();
                 av_frame_unref(frm);
                 if (++count >= BM_FRAMES) done = true;
@@ -372,13 +645,14 @@ static void play_video(const char* path,
             fprintf(stderr, "\n=== BENCHMARK RESULTS (%d frames) ===\n", count);
             fprintf(stderr, "  Decode throughput : %.1f fps  (%.1f ms/frame avg)\n",
                     count * 1e6 / elapsed, elapsed / 1000.0 / count);
-            fprintf(stderr, "  Decode thread cnt : %d\n", dec->thread_count);
+            fprintf(stderr, "  Decode thread cnt : %d\n", vdec->thread_count);
             fprintf(stderr, "  Total wall time   : %.2f s\n", elapsed / 1e6);
         }
 
         av_frame_free(&frm);
         av_packet_free(&pkt);
-        avcodec_free_context(&dec);
+        if (adec) avcodec_free_context(&adec);
+        avcodec_free_context(&vdec);
         avformat_close_input(&fmt);
         return;
     }
@@ -396,31 +670,76 @@ static void play_video(const char* path,
     fprintf(stderr, "[mp4_play] decode-ahead enabled  "
                     "(Core 1 = decode, Core 0 = display)\n");
 
-    AVRational       tb          = fmt->streams[vstream]->time_base;
-    volatile int64_t t_decode_us = 0;
+    AVRational       vtb          = fmt->streams[vstream]->time_base;
+    AVRational       atb          = (adec != NULL) ? fmt->streams[astream]->time_base : (AVRational){1, 1};
+    volatile int64_t t_decode_us  = 0;
     volatile int     total_frames = 0;
     int64_t          t_convert_us = 0;
     int64_t          t_vbl_us     = 0;
     int              disp_count   = 0;
     int              drop_count   = 0;
 
-    // ── Initialise decode-ahead queue ─────────────────────────────────────────
-    FrameQueue q;
-    q.f[0]     = av_frame_alloc();
-    q.f[1]     = av_frame_alloc();
-    q.pts_s[0] = q.pts_s[1] = 0.0;
-    q.head     = 0;
-    q.count    = 0;
-    q.eof      = false;
-    pthread_mutex_init(&q.mu,        NULL);
-    pthread_cond_init (&q.not_empty, NULL);
-    pthread_cond_init (&q.not_full,  NULL);
+    // ── Initialise video queue ────────────────────────────────────────────────
+    FrameQueue vq;
+    vq.f[0]     = av_frame_alloc();
+    vq.f[1]     = av_frame_alloc();
+    vq.pts_s[0] = vq.pts_s[1] = 0.0;
+    vq.head     = 0;
+    vq.count    = 0;
+    vq.eof      = false;
+    pthread_mutex_init(&vq.mu,        NULL);
+    pthread_cond_init (&vq.not_empty, NULL);
+    pthread_cond_init (&vq.not_full,  NULL);
 
-    DecodeArgs dargs = { &q, fmt, dec, vstream, tb, &t_decode_us, &total_frames };
+    // ── Initialise audio queue (if audio present) ─────────────────────────────
+    AudioQueue aq;
+    AudioQueue* aq_ptr = NULL;
+    volatile double audio_clock_s = 0.0;
+    volatile bool   audio_clock_valid = false;       // set true by audio thread after first frame
+    volatile bool   audio_playback_start = false;
+    pthread_t       athr;
+    AudioPlayArgs   aargs;  // must be in outer scope (audio thread holds pointer)
+    if (adec != NULL) {
+        for (int i = 0; i < 64; i++) {
+            aq.f[i] = av_frame_alloc();
+            aq.pts_s[i] = 0.0;
+        }
+        aq.head  = 0;
+        aq.count = 0;
+        aq.eof   = false;
+        pthread_mutex_init(&aq.mu,        NULL);
+        pthread_cond_init (&aq.not_empty, NULL);
+        pthread_cond_init (&aq.not_full,  NULL);
+        aq_ptr = &aq;
+
+        // Set MiSTer volume for audio playback (Groovy core defaults to muted)
+        FILE* cmd_fp = fopen("/dev/MiSTer_cmd", "w");
+        if (cmd_fp) {
+            fprintf(cmd_fp, "volume 6\n");
+            fclose(cmd_fp);
+            fprintf(stderr, "[audio] set MiSTer volume to 6\n");
+        }
+
+        // Start audio thread immediately (to consume frames), but it waits for signal
+        aargs.aq                = &aq;
+        aargs.adec              = adec;
+        aargs.audio_clock_s     = &audio_clock_s;
+        aargs.audio_clock_valid = &audio_clock_valid;
+        aargs.start_playback    = &audio_playback_start;
+        aargs.alsa_device       = "default";  // Same device BGM uses
+        pthread_create(&athr, NULL, audio_play_thread_fn, &aargs);
+        fprintf(stderr, "[audio] thread started (will wait for video sync)\n");
+    }
+
+    DecodeArgs dargs = { &vq, aq_ptr, fmt, vdec, adec, vstream, astream, vtb, atb,
+                         &t_decode_us, &total_frames };
     pthread_t  dthr;
     pthread_create(&dthr, NULL, decode_thread_fn, &dargs);
 
     // ── Display loop ───────────────────────────────────────────────────────────
+    // Timing strategy:
+    //   - WITH AUDIO:    video syncs to audio_clock_s (audio = master clock)
+    //   - WITHOUT AUDIO: wall-clock timing (old behavior)
     int64_t start_wall_us  = 0;
     double  start_pts_s    = 0.0;
     bool    clk_init       = false;
@@ -429,81 +748,99 @@ static void play_video(const char* path,
 
     while (!g_stop) {
         // ── A. Get next decoded frame (blocks if queue empty) ─────────────────
-        pthread_mutex_lock(&q.mu);
-        while (q.count == 0 && !q.eof && !g_stop)
-            pthread_cond_wait(&q.not_empty, &q.mu);
+        pthread_mutex_lock(&vq.mu);
+        while (vq.count == 0 && !vq.eof && !g_stop)
+            pthread_cond_wait(&vq.not_empty, &vq.mu);
 
-        if ((q.count == 0 && q.eof) || g_stop) {
-            pthread_mutex_unlock(&q.mu);
+        if ((vq.count == 0 && vq.eof) || g_stop) {
+            pthread_mutex_unlock(&vq.mu);
             break;
         }
 
-        // Take ownership of the frame at queue head.
-        // Replace the slot with a fresh empty AVFrame so the decoder can
-        // immediately reuse it.  All of this is under the mutex.
-        AVFrame* frame  = q.f[q.head];
-        double   pts_s  = q.pts_s[q.head];
+        AVFrame* frame  = vq.f[vq.head];
+        double   pts_s  = vq.pts_s[vq.head];
         AVFrame* fresh  = av_frame_alloc();
         if (!fresh) {
-            // OOM — extremely unlikely; bail out cleanly
-            pthread_mutex_unlock(&q.mu);
+            pthread_mutex_unlock(&vq.mu);
             fprintf(stderr, "[mp4_play] FATAL: av_frame_alloc OOM\n");
             g_stop = 1;
             av_frame_free(&frame);
             break;
         }
-        q.f[q.head] = fresh;
-        q.head      = (q.head + 1) & 1;
-        q.count--;
-        pthread_cond_signal(&q.not_full);
-        pthread_mutex_unlock(&q.mu);
+        vq.f[vq.head] = fresh;
+        vq.head       = (vq.head + 1) & 1;
+        vq.count--;
+        pthread_cond_signal(&vq.not_full);
+        pthread_mutex_unlock(&vq.mu);
 
-        // ── B. Initialise master clock on first displayed frame ───────────────
-        if (!clk_init) {
-            start_wall_us = now_us();
-            start_pts_s   = pts_s;
-            clk_init      = true;
+        // ── B. Signal audio thread to start playback (on first video frame) ──
+        if (!clk_init && adec != NULL) {
+            audio_playback_start = true;  // Signal audio thread to start ALSA output
         }
 
-        // ── C. Update frame-period estimate ──────────────────────────────────
+        // ── C. Initialise master clock on first displayed frame ───────────────
+        if (!clk_init) {
+            if (adec == NULL) {
+                // No audio: use wall-clock timing
+                start_wall_us = now_us();
+                start_pts_s   = pts_s;
+            }
+            clk_init = true;
+        }
+
+        // ── D. Update frame-period estimate ──────────────────────────────────
         if (prev_pts_s >= 0.0) {
             const double dp = pts_s - prev_pts_s;
             if (dp > 0.001 && dp < 0.2) frame_period_s = dp;
         }
         prev_pts_s = pts_s;
 
-        // ── D. Compute target display time ────────────────────────────────────
-        const double  elapsed_pts_s = pts_s - start_pts_s;
-        const int64_t target_us     = start_wall_us + (int64_t)(elapsed_pts_s * 1e6);
-        // Drop threshold: 1 full frame period.
-        // Frames that arrive 0–33 ms late are displayed (slight timing slip,
-        // invisible or imperceptible).  Only frames that arrive more than a
-        // full frame late are skipped; the clock then resets so the next
-        // frame gets a fresh 33 ms budget.  Using 0.5× (16.67 ms) caused
-        // frames that were only 18–27 ms late to be discarded unnecessarily,
-        // producing visible freezes instead of the brief stutter a late
-        // display would cause.
-        const int64_t drop_thresh   = (int64_t)(frame_period_s * 1.0e6);
+        // ── E. Compute target display time ────────────────────────────────────
+        int64_t target_us;
+        double  drop_thresh_s = frame_period_s * 1.0;
 
-        // ── E. Drop if too late ───────────────────────────────────────────────
-        if (now_us() > target_us + drop_thresh) {
-            const int64_t late_us = now_us() - target_us;
-            fprintf(stderr, "[mp4_play] drop  pts=%.3f  late=%lld ms\n",
-                    pts_s, (long long)late_us / 1000);
-            av_frame_free(&frame);
-            drop_count++;
+        if (adec != NULL) {
+            // WITH AUDIO: video PTS must not exceed audio clock
+            // Wait until audio_clock_s >= pts_s
+            // Drop if video is more than 1 frame period behind audio
+            // BUT: only sync if audio clock is valid (audio has played first frame)
+            if (audio_clock_valid) {
+                const double audio_clk = audio_clock_s;
+                if (pts_s < audio_clk - drop_thresh_s) {
+                    // Video is too far behind audio — drop frame
+                    fprintf(stderr, "[mp4_play] drop  video_pts=%.3f  audio_clk=%.3f  "
+                                    "behind=%.1f ms\n",
+                            pts_s, audio_clk, (audio_clk - pts_s) * 1000.0);
+                    av_frame_free(&frame);
+                    drop_count++;
+                    continue;
+                }
+                // Wait until audio catches up to video PTS
+                // (In practice, video decode is slower than audio, so this rarely blocks)
+                while (audio_clock_s < pts_s && !g_stop) {
+                    sleep_us(1000);  // 1 ms spin
+                }
+            }
+            target_us = now_us();  // display immediately (audio clock reached or not yet valid)
+        } else {
+            // WITHOUT AUDIO: wall-clock timing (old behavior)
+            const double  elapsed_pts_s = pts_s - start_pts_s;
+            target_us = start_wall_us + (int64_t)(elapsed_pts_s * 1e6);
+            const int64_t drop_thresh_us = (int64_t)(drop_thresh_s * 1e6);
 
-            // Re-anchor the master clock to prevent cascade drops.
-            // Without this, one slow decode or DMA spike skews the clock and
-            // every subsequent frame appears "late" until the backlog drains,
-            // turning 1 real drop into a burst of 5-10 drops.
-            // After reset, the next frame gets a fresh 33.3 ms budget.
-            start_wall_us = now_us();
-            start_pts_s   = pts_s;
-            continue;
+            if (now_us() > target_us + drop_thresh_us) {
+                const int64_t late_us = now_us() - target_us;
+                fprintf(stderr, "[mp4_play] drop  pts=%.3f  late=%lld ms\n",
+                        pts_s, (long long)late_us / 1000);
+                av_frame_free(&frame);
+                drop_count++;
+                start_wall_us = now_us();
+                start_pts_s   = pts_s;
+                continue;
+            }
         }
 
-        // ── F. Scale YUV, write to DDR3, trigger + await FPGA DMA ────────────
+        // ── F. Scale YUV, write to DDR3, trigger + await FPGA DMA ─────────────
         {
             const int64_t  tc0           = now_us();
             const uint32_t rgb_back_phys = FB_PHYS + (uint32_t)back * FB_SIZE;
@@ -513,8 +850,8 @@ static void play_video(const char* path,
         av_frame_free(&frame);
         if (g_stop) break;
 
-        // ── G. Sleep until 1 ms before target ────────────────────────────────
-        {
+        // ── G. Sleep until 1 ms before target (wall-clock mode only) ──────────
+        if (adec == NULL) {
             const long to_sleep = (long)(target_us - now_us()) - 1000;
             if (to_sleep > 500) sleep_us(to_sleep);
         }
@@ -533,16 +870,34 @@ static void play_video(const char* path,
         axi[AXI_CTRL_IDX] = (uint32_t)back;
         { int tmp = front; front = back; back = tmp; }
 
+        // ── J. Wait for next VBL to ensure ASCAL switched to new front ────────
+        // Prevents ghosting: old front becomes new back, but ASCAL might still
+        // be reading from it for a few scanlines after buf_sel flip. Waiting
+        // for the next VBL ensures ASCAL has fully switched before we write.
+        {
+            const int64_t tv1 = now_us();
+            while (!g_stop && !(axi[AXI_STATUS_IDX] & AXI_VBL_BIT)) {
+                if (now_us() - tv1 > 50000LL) break;
+            }
+        }
+
         disp_count++;
     }
 
-    // ── Shutdown decoder thread ───────────────────────────────────────────────
+    // ── Shutdown decoder and audio threads ────────────────────────────────────
     g_stop = 1;
-    pthread_mutex_lock(&q.mu);
-    pthread_cond_signal(&q.not_full);   // wake decoder if blocked on full
-    pthread_cond_signal(&q.not_empty);  // wake display if blocked on empty
-    pthread_mutex_unlock(&q.mu);
+    pthread_mutex_lock(&vq.mu);
+    pthread_cond_signal(&vq.not_full);
+    pthread_cond_signal(&vq.not_empty);
+    pthread_mutex_unlock(&vq.mu);
+    if (aq_ptr != NULL) {
+        pthread_mutex_lock(&aq.mu);
+        pthread_cond_signal(&aq.not_full);
+        pthread_cond_signal(&aq.not_empty);
+        pthread_mutex_unlock(&aq.mu);
+    }
     pthread_join(dthr, NULL);
+    if (adec != NULL) pthread_join(athr, NULL);
 
     // ── Summary statistics ────────────────────────────────────────────────────
     const int total = total_frames;   // snapshot after join — no more writes
@@ -566,12 +921,21 @@ static void play_video(const char* path,
 
     // ── Cleanup ───────────────────────────────────────────────────────────────
     for (int i = 0; i < 2; i++)
-        if (q.f[i]) av_frame_free(&q.f[i]);
-    pthread_cond_destroy(&q.not_empty);
-    pthread_cond_destroy(&q.not_full);
-    pthread_mutex_destroy(&q.mu);
+        if (vq.f[i]) av_frame_free(&vq.f[i]);
+    pthread_cond_destroy(&vq.not_empty);
+    pthread_cond_destroy(&vq.not_full);
+    pthread_mutex_destroy(&vq.mu);
 
-    avcodec_free_context(&dec);
+    if (aq_ptr != NULL) {
+        for (int i = 0; i < 4; i++)
+            if (aq.f[i]) av_frame_free(&aq.f[i]);
+        pthread_cond_destroy(&aq.not_empty);
+        pthread_cond_destroy(&aq.not_full);
+        pthread_mutex_destroy(&aq.mu);
+    }
+
+    if (adec) avcodec_free_context(&adec);
+    avcodec_free_context(&vdec);
     avformat_close_input(&fmt);
 }
 
@@ -579,25 +943,31 @@ static void play_video(const char* path,
 int main(int argc, char** argv) {
     fprintf(stderr, "[mp4_play v" MP4_PLAY_VERSION "] start\n");
     if (argc < 2) {
-        fprintf(stderr, "usage: mp4_play <file> [-b] [-t N] [-ss N]\n");
-        fprintf(stderr, "  -b      benchmark: decode 200 frames as fast as possible\n");
-        fprintf(stderr, "  -t N    FFmpeg decoder thread count (default 1)\n");
-        fprintf(stderr, "  -ss N   seek to N seconds (negative = from end)\n");
-        fprintf(stderr, "          e.g. -ss -60 seeks to 1 minute before EOF\n");
+        fprintf(stderr, "usage: mp4_play <file> [-b] [-t N] [-ss N] [--no-audio]\n");
+        fprintf(stderr, "  -b           benchmark: decode 200 frames as fast as possible\n");
+        fprintf(stderr, "  -t N         FFmpeg decoder thread count (default 1)\n");
+        fprintf(stderr, "  -ss N        seek to N seconds (negative = from end)\n");
+        fprintf(stderr, "               e.g. -ss -60 seeks to 1 minute before EOF\n");
+        fprintf(stderr, "  --no-audio   disable audio (video only, wall-clock timing)\n");
         return 1;
     }
     signal(SIGINT,  on_signal);
     signal(SIGTERM, on_signal);
 
     bool   benchmark = false;
+    bool   no_audio  = false;
     int    threads   = 1;
     double seek_s    = 0.0;
     for (int i = 2; i < argc; i++) {
         if (argv[i][0] != '-') continue;
-        switch (argv[i][1]) {
-            case 'b': benchmark = true; break;
-            case 't': if (i + 1 < argc) threads = atoi(argv[++i]); break;
-            case 's': if (argv[i][2] == 's' && i + 1 < argc) seek_s = atof(argv[++i]); break;
+        if (strcmp(argv[i], "--no-audio") == 0) {
+            no_audio = true;
+        } else {
+            switch (argv[i][1]) {
+                case 'b': benchmark = true; break;
+                case 't': if (i + 1 < argc) threads = atoi(argv[++i]); break;
+                case 's': if (argv[i][2] == 's' && i + 1 < argc) seek_s = atof(argv[++i]); break;
+            }
         }
     }
 
@@ -635,7 +1005,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "[mp4_play] YUV region: 0x%08X  Y=%u U=%u V=%u bytes\n",
             (unsigned)YUV_Y_PHYS, YUV_Y_SIZE, YUV_U_SIZE, YUV_V_SIZE);
 
-    play_video(argv[1], axi, yuv_y, yuv_u, yuv_v, benchmark, threads, seek_s);
+    play_video(argv[1], axi, yuv_y, yuv_u, yuv_v, benchmark, threads, seek_s, no_audio);
 
     munmap(yuv_map, YUV_TOTAL);
     munmap(axi_map, AXI_SIZE);

@@ -10,7 +10,10 @@
       "WebFetch(domain:github.com)",
       "Bash(ls c:/code/MiSTer_mp4_player/sys/*.qsys)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Read(//c/Users/christoph/.claude/projects/c--code-MiSTer-mp4-player/memory/**)"
+      "Read(//c/Users/christoph/.claude/projects/c--code-MiSTer-mp4-player/memory/**)",
+      "Bash(make clean:*)",
+      "Bash(make:*)",
+      "Bash(dpkg:*)"
     ],
     "additionalDirectories": [
       "c:\\code\\mpeg2fpga-master\\rtl",

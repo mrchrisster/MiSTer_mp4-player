@@ -190,10 +190,13 @@ assign VGA_DISABLE = 0;
 assign HDMI_FREEZE = 0;
 assign HDMI_BLACKOUT = 0;
 
-assign AUDIO_S = hps_audio ? 1'b1 : 1'b0;
-assign AUDIO_L = hps_audio ? sound_l_out : 1'b0;
-assign AUDIO_R = hps_audio ? sound_r_out : 1'b0;
-assign AUDIO_MIX = 0;
+// When in MP4 mode (FB_EN), keep AUDIO_S=1 to allow Linux ALSA through the mixer.
+// AUDIO_MIX=3 means "Linux audio only" (bypass core audio).
+// When not in MP4 mode, AUDIO_MIX=0 means "core audio only" (normal Groovy behavior).
+assign AUDIO_S = hps_audio ? 1'b1 : 1'b0;  // Keep audio path enabled
+assign AUDIO_L = (hps_audio && !status[60]) ? sound_l_out : 1'b0;
+assign AUDIO_R = (hps_audio && !status[60]) ? sound_r_out : 1'b0;
+assign AUDIO_MIX = status[60] ? 2'd3 : 2'd0;  // MP4 mode: Linux audio only; Core mode: core audio only
 
 assign LED_DISK = 0;
 assign LED_POWER = 0;
@@ -758,23 +761,25 @@ reg [23:0] PoC_frame_ddr       = 24'd0;
 reg [15:0] PoC_subframe_bl_ddr = 16'd0;
 reg [23:0] PoC_subframe_px_ddr = 24'd0;
 
-// Modeline from arm (default 256x240 sms)
-reg [15:0] PoC_H          = 16'd256;
-reg [7:0]  PoC_HFP        = 8'd10;
-reg [7:0]  PoC_HS         = 8'd24;
-reg [7:0]  PoC_HBP        = 8'd41;
-reg [15:0] PoC_V          = 16'd240;
-reg [7:0]  PoC_VFP        = 8'd2;
-reg [7:0]  PoC_VS         = 8'd3;
-reg [7:0]  PoC_VBP        = 8'd16;
+// Modeline from arm (default 640x480 VGA for MP4 player)
+reg [15:0] PoC_H          = 16'd640;
+reg [7:0]  PoC_HFP        = 8'd16;
+reg [7:0]  PoC_HS         = 8'd96;
+reg [7:0]  PoC_HBP        = 8'd48;
+reg [15:0] PoC_V          = 16'd480;
+reg [7:0]  PoC_VFP        = 8'd10;
+reg [7:0]  PoC_VS         = 8'd2;
+reg [7:0]  PoC_VBP        = 8'd33;
 
-// PLL (default 60hz for sms)
+// PLL (default 60hz for 640x480 VGA)
+// Pixel clock needed: 800×525×60 = 25.2 MHz
+// With ce_pix=4 and PLL output ~100 MHz → pixel clock = 100/4 = 25 MHz ≈ 25.2 MHz
 reg [7:0]  PoC_pll_F_M0   = 8'd4;
 reg [7:0]  PoC_pll_F_M1   = 8'd4;
 reg [7:0]  PoC_pll_F_C0   = 8'd3;
 reg [7:0]  PoC_pll_F_C1   = 8'd2;
 reg [31:0] PoC_pll_F_K    = 32'd1182682725;
-reg [7:0]  PoC_ce_pix     = 8'd16;
+reg [7:0]  PoC_ce_pix     = 8'd4;
 
 reg        PoC_pll_S      = 1'b0; //scandoubler 480i
 

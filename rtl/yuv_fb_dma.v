@@ -59,7 +59,10 @@ module yuv_fb_dma (
     output reg         avl_read,
     output reg  [63:0] avl_writedata,
     output reg   [7:0] avl_byteenable,
-    output reg         avl_write
+    output reg         avl_write,
+
+    // Debug UART output
+    output wire        uart_debug_tx
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,11 +82,11 @@ parameter RGB_BEATS   = 8'd160;   // 1280 B / 8 = 160
 localparam PIPE_LAT    = 5;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Line buffers  (Quartus infers as distributed logic — correct for combinational reads)
+// Line buffers — FORCE separate M10K blocks to prevent address aliasing
 // ─────────────────────────────────────────────────────────────────────────────
-reg [7:0] y_buf  [0:W-1];        // 640 B — one luma row
-reg [7:0] u_buf  [0:(W/2)-1];    // 320 B — one Cb row  (reused 2× per UV pair)
-reg [7:0] v_buf  [0:(W/2)-1];    // 320 B — one Cr row
+(* ramstyle = "M10K, no_rw_check" *) reg [7:0] y_buf  [0:W-1];        // 640 B — one luma row
+(* ramstyle = "M10K, no_rw_check" *) reg [7:0] u_buf  [0:(W/2)-1];    // 320 B — one Cb row
+(* ramstyle = "M10K, no_rw_check" *) reg [7:0] v_buf  [0:(W/2)-1];    // 320 B — one Cr row
 
 // RGB output row buffer.  Index 2k = low byte of pixel k, 2k+1 = high byte.
 reg [7:0] rgb_buf [0:(W*2)-1];   // 1280 B
@@ -102,6 +105,7 @@ localparam S_PROCESS   = 4'd7;   // run conversion pipeline, fill rgb_buf
 localparam S_WRITE     = 4'd8;   // burst-write rgb_buf row to DDR3
 localparam S_NEXT_ROW  = 4'd9;   // advance row counter, decide next state
 localparam S_DONE_ST   = 4'd10;  // pulse done, return to idle
+localparam S_GUARD     = 4'd11;  // guard state: isolate V fetch from Y fetch
 
 reg [3:0] state;
 
@@ -113,18 +117,20 @@ reg  [7:0] beat_cnt;     // Avalon read beat counter in RECV states
 reg  [9:0] proc_x;       // pixel feed counter in S_PROCESS  (0..W-1)
 reg  [9:0] rgb_wr_px;    // pipeline-output collection counter (0..W-1)
 reg  [7:0] wr_beat;      // write beat counter in S_WRITE  (0..RGB_BEATS-1)
+reg [31:0] y_addr_reg;   // latched Y address (calculated in S_GUARD, used in S_FETCH_Y)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Avalon row address helpers
 // ─────────────────────────────────────────────────────────────────────────────
 // Avalon address = DDR3_byte_address >> 3.
-// Multiplications by row-stride constants are synthesised to adders/counters
-// by Quartus (no dedicated multipliers needed at compile time since these only
-// change once per row).
-wire [31:0] y_row_byte   = yuv_y_base + {22'b0, row}        * W;
-wire [31:0] u_row_byte   = yuv_u_base + {23'b0, row[9:1]}   * (W/2);
-wire [31:0] v_row_byte   = yuv_v_base + {23'b0, row[9:1]}   * (W/2);
-wire [31:0] rgb_row_byte = rgb_base   + {22'b0, row}        * (W*2);
+// Use explicit bit shifts to avoid synthesis issues with multiplication:
+//   W=640 = 512+128 = 2^9+2^7, so row*640 = (row<<9)+(row<<7)
+//   W/2=320 = 256+64 = 2^8+2^6, so row*320 = (row<<8)+(row<<6)
+//   W*2=1280 = 1024+256 = 2^10+2^8, so row*1280 = (row<<10)+(row<<8)
+wire [31:0] y_row_byte   = yuv_y_base + (({22'b0, row} << 9) + ({22'b0, row} << 7));
+wire [31:0] u_row_byte   = yuv_u_base + (({23'b0, row[9:1]} << 8) + ({23'b0, row[9:1]} << 6));
+wire [31:0] v_row_byte   = yuv_v_base + (({23'b0, row[9:1]} << 8) + ({23'b0, row[9:1]} << 6));
+wire [31:0] rgb_row_byte = rgb_base   + (({22'b0, row} << 10) + ({22'b0, row} << 8));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // yuv_to_rgb pipeline instance
@@ -230,8 +236,10 @@ always @(posedge clk) begin
             beat_cnt       <= 8'd0;
             // avl_read (old value) was 0 on first entry, so don't advance yet.
             // On subsequent cycles avl_read=1 (old), check waitrequest.
-            if (avl_read && !avl_waitrequest)
-                state <= S_RECV_U;
+            if (avl_read && !avl_waitrequest) begin
+                state    <= S_RECV_U;
+                avl_read <= 1'b0;  // OVERRIDE: Deassert immediately to avoid double-issue
+            end
         end
 
         S_RECV_U: begin
@@ -260,8 +268,10 @@ always @(posedge clk) begin
             avl_burstcount <= UV_BEATS;
             avl_read       <= 1'b1;
             beat_cnt       <= 8'd0;
-            if (avl_read && !avl_waitrequest)
-                state <= S_RECV_V;
+            if (avl_read && !avl_waitrequest) begin
+                state    <= S_RECV_V;
+                avl_read <= 1'b0;  // OVERRIDE: Deassert immediately
+            end
         end
 
         S_RECV_V: begin
@@ -275,20 +285,31 @@ always @(posedge clk) begin
                 v_buf[{beat_cnt[5:0], 3'd6}] <= avl_readdata[55:48];
                 v_buf[{beat_cnt[5:0], 3'd7}] <= avl_readdata[63:56];
                 if (beat_cnt == UV_BEATS - 8'd1)
-                    state <= S_FETCH_Y;
+                    state <= S_GUARD;  // Guard state to isolate V from Y
                 else
                     beat_cnt <= beat_cnt + 8'd1;
             end
         end
 
+        // ── Guard state: ensure V fetch complete before Y fetch ─────────────
+        S_GUARD: begin
+            // Calculate and latch Y address here to ensure it's stable before use
+            y_addr_reg <= yuv_y_base + (({22'b0, row} << 9) + ({22'b0, row} << 7));
+            state <= S_FETCH_Y;
+        end
+
         // ── Fetch Y row ──────────────────────────────────────────────────────
         S_FETCH_Y: begin
-            avl_address    <= y_row_byte[31:3];
+            // Calculate address here too (for odd rows that skip S_GUARD)
+            y_addr_reg     <= yuv_y_base + (({22'b0, row} << 9) + ({22'b0, row} << 7));
+            avl_address    <= y_addr_reg[31:3];  // Use registered address from previous cycle
             avl_burstcount <= Y_BEATS;
             avl_read       <= 1'b1;
             beat_cnt       <= 8'd0;
-            if (avl_read && !avl_waitrequest)
-                state <= S_RECV_Y;
+            if (avl_read && !avl_waitrequest) begin
+                state    <= S_RECV_Y;
+                avl_read <= 1'b0;  // OVERRIDE: Deassert immediately
+            end
         end
 
         S_RECV_Y: begin
@@ -324,6 +345,9 @@ always @(posedge clk) begin
                 pipe_V   <= v_buf[proc_x[9:1]];
                 pipe_vin <= 1'b1;
                 proc_x   <= proc_x + 10'd1;
+            end else begin
+                // Stop feeding pipeline once we've sent all 640 pixels
+                pipe_vin <= 1'b0;
             end
 
             // Collect pipeline output into rgb_buf
@@ -410,5 +434,25 @@ always @(posedge clk) begin
         endcase
     end
 end
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Debug module — UART logger for rows 0-3
+// ─────────────────────────────────────────────────────────────────────────────
+yuv_dma_debug debug_logger (
+    .clk                 (clk),
+    .reset               (reset),
+    .state               (state),
+    .row                 (row),
+    .beat_cnt            (beat_cnt),
+    .avl_address_word    ({avl_address, 3'b000}),  // Convert back to byte address
+    .avl_read            (avl_read),
+    .avl_waitrequest     (avl_waitrequest),
+    .avl_readdatavalid   (avl_readdatavalid),
+    .state_changed       (1'b0),  // Not used
+    .y_buf_0             (y_buf[0]),
+    .y_buf_270           (y_buf[624]),   // 0x270
+    .y_buf_27F           (y_buf[639]),   // 0x27F
+    .uart_tx             (uart_debug_tx)
+);
 
 endmodule

@@ -15,6 +15,7 @@ set_global_assignment -name VERILOG_FILE rtl/mp4_ctrl_regs.v
 set_global_assignment -name VERILOG_FILE rtl/yuv_fb_dma.v
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/yuv_to_rgb.sv
 set_global_assignment -name VERILOG_FILE rtl/uart_tx.v
+set_global_assignment -name VERILOG_FILE rtl/yuv_dma_debug.v
 set_global_assignment -name VERILOG_FILE rtl/mp4_debug_uart.v
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/fb_arb.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/fb_scan_out.sv

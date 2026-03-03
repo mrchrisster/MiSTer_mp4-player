@@ -426,7 +426,8 @@ yuv_fb_dma yuv_dma (
     .avl_read         (dma_avl_read),
     .avl_writedata    (dma_avl_writedata),
     .avl_byteenable   (dma_avl_byteenable),
-    .avl_write        (dma_avl_write)
+    .avl_write        (dma_avl_write),
+    .uart_debug_tx    (uart_rxd)  // Debug UART replaces mp4_debug_uart
 );
 
 // ── yuv_fb_dma drives ram1 directly (fb_arb removed) ─────────────────────
@@ -472,28 +473,25 @@ assign fbs_avl_waitrequest   = 1'b1;
 assign fbs_avl_readdata      = 64'd0;
 assign fbs_avl_readdatavalid = 1'b0;
 
-// ── FPGA debug UART: 1 status line/sec → HPS /dev/ttyS1 ─────────────────
-// Format: "T=HHHH D=HHHH V=HHHH W=HHHH B=H\r\n" (115200 8N1)
-//   T = dma_trigger count, D = dma_done count, V = fb_vbl count,
-//   W = Avalon write-stall cycles (yuv_fb_dma view), B = buf_sel
-wire mp4_debug_uart_tx;
-
-mp4_debug_uart #(.CLK_FRE(83)) mp4_uart (
-    .clk            (clk_sys),
-    .rst_n          (~reset_req),
-    .dma_trigger    (dma_trigger),       // clk_sys pulse (from mp4_ctrl_regs)
-    .dma_done       (dma_done),          // clk_sys pulse (synchronized from clk_vid)
-    .fb_vbl         (fb_vbl_sys),
-    .ram_waitrequest(dma_avl_waitrequest), // yuv_fb_dma's stall view
-    .ram_read       (dma_avl_read),
-    .ram_write      (dma_avl_write),
-    .buf_sel        (buf_sel),
-    .tx_pin         (mp4_debug_uart_tx)
-);
-
-// Route debug UART TX to HPS UART RXD so ARM can read via /dev/ttyS1.
-// emu UART_TXD is disconnected (it drives 0 in Groovy.sv anyway).
-assign uart_rxd = mp4_debug_uart_tx;
+// ── FPGA debug UART: yuv_dma_debug → HPS /dev/ttyS1 ─────────────────────
+// Replaced mp4_debug_uart with yuv_dma_debug (instantiated inside yuv_fb_dma.v).
+// uart_rxd is now driven by yuv_dma.uart_debug_tx (see yuv_fb_dma instantiation).
+//
+// OLD mp4_debug_uart (disabled):
+// wire mp4_debug_uart_tx;
+// mp4_debug_uart #(.CLK_FRE(83)) mp4_uart (
+//     .clk            (clk_sys),
+//     .rst_n          (~reset_req),
+//     .dma_trigger    (dma_trigger),
+//     .dma_done       (dma_done),
+//     .fb_vbl         (fb_vbl_sys),
+//     .ram_waitrequest(dma_avl_waitrequest),
+//     .ram_read       (dma_avl_read),
+//     .ram_write      (dma_avl_write),
+//     .buf_sel        (buf_sel),
+//     .tx_pin         (mp4_debug_uart_tx)
+// );
+// assign uart_rxd = mp4_debug_uart_tx;
 
 `else
 wire buf_sel = 1'b0;

@@ -1,30 +1,4 @@
 
-State Machine - |sys_top|yuv_fb_dma:yuv_dma|state
-Name state.S_DONE_ST state.S_NEXT_ROW state.S_WRITE state.S_PROCESS state.S_RECV_Y state.S_FETCH_Y state.S_RECV_V state.S_FETCH_V state.S_RECV_U state.S_FETCH_U state.S_IDLE 
-state.S_IDLE 0 0 0 0 0 0 0 0 0 0 0 
-state.S_FETCH_U 0 0 0 0 0 0 0 0 0 1 1 
-state.S_RECV_U 0 0 0 0 0 0 0 0 1 0 1 
-state.S_FETCH_V 0 0 0 0 0 0 0 1 0 0 1 
-state.S_RECV_V 0 0 0 0 0 0 1 0 0 0 1 
-state.S_FETCH_Y 0 0 0 0 0 1 0 0 0 0 1 
-state.S_RECV_Y 0 0 0 0 1 0 0 0 0 0 1 
-state.S_PROCESS 0 0 0 1 0 0 0 0 0 0 1 
-state.S_WRITE 0 0 1 0 0 0 0 0 0 0 1 
-state.S_NEXT_ROW 0 1 0 0 0 0 0 0 0 0 1 
-state.S_DONE_ST 1 0 0 0 0 0 0 0 0 0 1 
-
-State Machine - |sys_top|mp4_debug_uart:mp4_uart|uart_tx:u_uart_tx|state
-Name state.S_SEND_BYTE state.S_START state.S_IDLE state.S_STOP 
-state.S_IDLE 0 0 0 0 
-state.S_START 0 1 1 0 
-state.S_SEND_BYTE 1 0 1 0 
-state.S_STOP 0 0 1 1 
-
-State Machine - |sys_top|emu:emu|ddram:ddram|state
-Name state.010 
-state.000 0 
-state.010 1 
-
 State Machine - |sys_top|ascal:ascal|o_copy
 Name o_copy.sCOPY o_copy.sSHIFT o_copy.sWAIT 
 o_copy.sWAIT 0 0 0 
@@ -38,12 +12,6 @@ o_state.sHSYNC 0 0 1 1
 o_state.sREAD 0 1 0 1 
 o_state.sWAITREAD 1 0 0 1 
 
-State Machine - |sys_top|ascal:ascal|avl_state
-Name avl_state.sREAD avl_state.sWRITE avl_state.sIDLE 
-avl_state.sIDLE 0 0 0 
-avl_state.sWRITE 0 1 1 
-avl_state.sREAD 1 0 1 
-
 State Machine - |sys_top|fb_scan_out:fbs|f_state
 Name f_state.F_IDLE f_state.F_RECV f_state.F_FETCH 
 f_state.F_IDLE 0 0 0 
@@ -56,13 +24,30 @@ state.00 0 0 0
 state.01 1 0 1 
 state.10 1 1 0 
 
-State Machine - |sys_top|emu:emu|vga:vga|binary_to_bcd:binary_to_bcd|STATE
-Name STATE.Shift STATE.Check STATE.Init STATE.Idle STATE.Done 
-STATE.Idle 0 0 0 0 0 
-STATE.Init 0 0 1 1 0 
-STATE.Check 0 1 0 1 0 
-STATE.Shift 1 0 0 1 0 
-STATE.Done 0 0 0 1 1 
+State Machine - |sys_top|emu:emu|ddram:ddram|state
+Name state.010 
+state.000 0 
+state.010 1 
+
+State Machine - |sys_top|ascal:ascal|avl_state
+Name avl_state.sREAD avl_state.sWRITE avl_state.sIDLE 
+avl_state.sIDLE 0 0 0 
+avl_state.sWRITE 0 1 1 
+avl_state.sREAD 1 0 1 
+
+State Machine - |sys_top|emu:emu|PoC_state_frameskip
+Name PoC_state_frameskip.S_Blit_Auto_End PoC_state_frameskip.S_Blit_Auto_Line PoC_state_frameskip.00000000 PoC_state_frameskip.S_Blit_Auto_First 
+PoC_state_frameskip.00000000 0 0 0 0 
+PoC_state_frameskip.S_Blit_Auto_First 0 0 1 1 
+PoC_state_frameskip.S_Blit_Auto_Line 0 1 1 0 
+PoC_state_frameskip.S_Blit_Auto_End 1 0 1 0 
+
+State Machine - |sys_top|yuv_fb_dma:yuv_dma|yuv_dma_debug:debug_logger|uart_tx:uart|state
+Name state.S_SEND_BYTE state.S_START state.S_IDLE state.S_STOP 
+state.S_IDLE 0 0 0 0 
+state.S_START 0 1 1 0 
+state.S_SEND_BYTE 1 0 1 0 
+state.S_STOP 0 0 1 1 
 
 State Machine - |sys_top|emu:emu|pll_cfg:pll_cfg|altera_pll_reconfig_top:pll_cfg_inst|altera_pll_reconfig_core:NM28_reconfig.reconfig_core.altera_pll_reconfig_core_inst0|current_state
 Name current_state.IDLE current_state.LOCKED current_state.WAIT_ON_LOCK 
@@ -122,6 +107,14 @@ dps_current_state.PHASE_DONE_LOW_2 0 0 0 1 0 1
 dps_current_state.PHASE_DONE_LOW_3 0 0 1 0 0 1 
 dps_current_state.PHASE_DONE_LOW_4 0 1 0 0 0 1 
 dps_current_state.PHASE_DONE_LOW_0 1 0 0 0 0 1 
+
+State Machine - |sys_top|emu:emu|vga:vga|binary_to_bcd:binary_to_bcd|STATE
+Name STATE.Shift STATE.Check STATE.Init STATE.Idle STATE.Done 
+STATE.Idle 0 0 0 0 0 
+STATE.Init 0 0 1 1 0 
+STATE.Check 0 1 0 1 0 
+STATE.Shift 1 0 0 1 0 
+STATE.Done 0 0 0 1 1 
 
 State Machine - |sys_top|emu:emu|lz4:lz4|state
 Name state.S_Copy_Matches_64_8 state.S_Copy_Matches_64 state.S_Copy_Matches state.S_Read_Match_Length_64 state.S_Read_Match_Length state.S_Done_64 state.S_Done state.S_Read_Match_Offset state.S_Read_Offset state.S_Read_Literals_64 state.S_Read_Literals state.S_Read_Literals_Length_64 state.S_Read_Literals_Length state.S_Read_Token state.S_Idle 
@@ -199,10 +192,3 @@ state.sW3 0 0 0 1 0 0 1
 state.sW4 0 0 1 0 0 0 1 
 state.sW5 0 1 0 0 0 0 1 
 state.sW6 1 0 0 0 0 0 1 
-
-State Machine - |sys_top|emu:emu|PoC_state_frameskip
-Name PoC_state_frameskip.S_Blit_Auto_End PoC_state_frameskip.S_Blit_Auto_Line PoC_state_frameskip.00000000 PoC_state_frameskip.S_Blit_Auto_First 
-PoC_state_frameskip.00000000 0 0 0 0 
-PoC_state_frameskip.S_Blit_Auto_First 0 0 1 1 
-PoC_state_frameskip.S_Blit_Auto_Line 0 1 1 0 
-PoC_state_frameskip.S_Blit_Auto_End 1 0 1 0 
