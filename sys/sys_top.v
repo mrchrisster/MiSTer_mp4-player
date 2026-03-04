@@ -396,9 +396,10 @@ mp4_ctrl_regs mp4_regs (
     .arready (lw_arready),
     .rdata   (lw_rdata),   .rid     (lw_rid),     .rresp   (lw_rresp),
     .rlast   (lw_rlast),   .rvalid  (lw_rvalid),  .rready  (lw_rready),
-    .fb_vbl      (fb_vbl_sys),
-    .dma_done    (dma_done),
-    .buf_sel     (buf_sel),
+    .fb_vbl          (fb_vbl_sys),
+    .dma_done        (dma_done),
+    .file_selected   (mp4_file_selected),
+    .buf_sel         (buf_sel),
     .dma_trigger (dma_trigger),
     .yuv_y_base  (yuv_y_base),
     .yuv_u_base  (yuv_u_base),
@@ -1966,6 +1967,7 @@ wire [13:0] fb_stride;
 		wire        fb_pal_wr;
 	`endif
 	wire   fb_force_blank;
+	wire   mp4_file_selected;  // File selection trigger from emu
 `else
 	assign fb_en = 0;
 	assign fb_fmt = 0;
@@ -2032,6 +2034,7 @@ emu emu
 	.FB_VBL(fb_vbl),
 	.FB_LL(lowlat),
 	.FB_FORCE_BLANK(fb_force_blank),
+	.MP4_FILE_SELECTED(mp4_file_selected),
 
 `ifdef MISTER_FB_PALETTE
 	.FB_PAL_CLK (fb_pal_clk),

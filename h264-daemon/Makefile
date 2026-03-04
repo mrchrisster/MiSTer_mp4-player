@@ -1,5 +1,6 @@
 CXX      = arm-linux-gnueabihf-g++
-CFLAGS   = -Wall -O3 -std=c++11 -D_FILE_OFFSET_BITS=64
+# Match FFmpeg's ARM optimization flags for YUV scaling code
+CFLAGS   = -Wall -O3 -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -std=c++11 -D_FILE_OFFSET_BITS=64
 STRIP    = arm-linux-gnueabihf-strip
 
 # Path to static FFmpeg ARM build.
@@ -15,8 +16,10 @@ LIBS     = -Wl,-Bstatic \
                -lm -lpthread -lz -ldl -lasound
 
 # Output binaries
-TARGET = mp4_play
-TESTS  = test_color test_endian test_rgb_direct test_stripe test_yuv_fpga test_yuv_dump
+TARGET   = mp4_play
+TESTS    = test_color test_endian test_rgb_direct test_stripe test_yuv_fpga test_yuv_dump
+
+# NOTE: mp4_launcher.sh is now a bash script (no compilation needed)
 
 all: $(TARGET)
 

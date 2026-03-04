@@ -74,6 +74,9 @@ module emu
    input         FB_LL,
    output        FB_FORCE_BLANK,
 
+   // MP4 player: signal file selection from OSD to ARM daemon
+   output        MP4_FILE_SELECTED,
+
 `ifdef MISTER_FB_PALETTE
    // Palette control for 8bit modes.
    // Ignored for other video modes.
@@ -190,13 +193,12 @@ assign VGA_DISABLE = 0;
 assign HDMI_FREEZE = 0;
 assign HDMI_BLACKOUT = 0;
 
-// When in MP4 mode (FB_EN), keep AUDIO_S=1 to allow Linux ALSA through the mixer.
-// AUDIO_MIX=3 means "Linux audio only" (bypass core audio).
-// When not in MP4 mode, AUDIO_MIX=0 means "core audio only" (normal Groovy behavior).
-assign AUDIO_S = hps_audio ? 1'b1 : 1'b0;  // Keep audio path enabled
-assign AUDIO_L = (hps_audio && !status[60]) ? sound_l_out : 1'b0;
-assign AUDIO_R = (hps_audio && !status[60]) ? sound_r_out : 1'b0;
-assign AUDIO_MIX = status[60] ? 2'd3 : 2'd0;  // MP4 mode: Linux audio only; Core mode: core audio only
+// MP4 mode: silence core audio (AUDIO_L/R=0) since ALSA (BGM/mp4_play) plays instead
+// ALSA audio is ALWAYS mixed in by the framework - AUDIO_MIX only controls stereo width
+assign AUDIO_S = 1'b1;  // Always signed audio
+assign AUDIO_L = (hps_audio && !status[60]) ? sound_l_out : 16'd0;
+assign AUDIO_R = (hps_audio && !status[60]) ? sound_r_out : 16'd0;
+assign AUDIO_MIX = 2'd0;  // No stereo mixing (standard)
 
 assign LED_DISK = 0;
 assign LED_POWER = 0;
@@ -213,6 +215,9 @@ assign FB_HEIGHT      = 12'd480;
 assign FB_BASE        = 32'h30000000;    // 768 MB — above Linux heap, ASCAL, rotation bufs
 assign FB_STRIDE      = 14'd1280;        // 640 × 2 bytes/row
 assign FB_FORCE_BLANK = 1'b0;
+
+// MP4 player file selection signal
+assign MP4_FILE_SELECTED = file_selected_latch;
 `endif
 //////////////////////////////////////////////////////////////////
 
@@ -225,8 +230,12 @@ localparam CONF_STR = {
    "Groovy;;",
    "-;",   
    "FC1,GMC,Load Gmc;",
-   "FC2,MP4,Load Video;",
+   "FC2,MP4MOVMKVM4V,Load Video;",
    "O[60],Video Mode,Core,MP4;",
+   "-;",
+   "T0,Play Video;",
+   "T1,Stop Video;",
+   "T2,Play Random;",
    "-;",
    "P1,Video;",   
    "P1O[4:3],Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;",  
@@ -343,6 +352,23 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 // The ARM daemon writes decoded RGB565 frames directly to DDR3 @ 0x30000000.
 // Never throttle — MiSTer can drain the file transfer at full speed.
 assign ioctl_wait = 1'b0;
+
+// ─── File Selection Detection ────────────────────────────────────────────────
+// Detect when user selects a video file via OSD (FC2 = ioctl_index 2)
+// Set file_selected status bit for ARM daemon to detect
+reg        file_selected_latch = 1'b0;
+reg        ioctl_download_prev = 1'b0;
+
+always @(posedge clk_sys) begin
+    ioctl_download_prev <= ioctl_download;
+
+    // Rising edge of ioctl_download for video files (index 2 = FC2)
+    if (ioctl_download && !ioctl_download_prev && ioctl_index == 16'd2) begin
+        file_selected_latch <= 1'b1;
+    end
+    // Clear latch when bit is read by ARM (handled in mp4_ctrl_regs)
+    // Note: mp4_ctrl_regs will wire this to status bit 5
+end
 
 // OSD option visibility
 wire [15:0] status_menumask; // a high value hides the menu item

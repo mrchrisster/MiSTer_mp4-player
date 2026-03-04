@@ -71,7 +71,8 @@ set_global_assignment -name VERILOG_MACRO "MISTER_DOWNSCALE_NN=1"
 #set_global_assignment -name VERILOG_MACRO "MISTER_DISABLE_YC=1"
 
 # Disable ALSA audio output to save some resources
-set_global_assignment -name VERILOG_MACRO "MISTER_DISABLE_ALSA=1"
+# COMMENTED OUT - we need ALSA for BGM and mp4_play audio!
+#set_global_assignment -name VERILOG_MACRO "MISTER_DISABLE_ALSA=1"
 
 # Disable LZ4 64bits mode. Enable only for fast building
 #set_global_assignment -name VERILOG_MACRO "MISTER_LZ4_DISABLE_64B=1"

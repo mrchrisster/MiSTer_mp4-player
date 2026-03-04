@@ -7,11 +7,13 @@
 //  ADDRESS MAP  (H2F LW bridge base 0xFF200000, offsets below):
 //
 //    Offset 0x000  Status Register  (read-only from ARM):
-//                    [2]    = fb_vbl       — sticky latch: set by ASCAL VBlank pulse,
-//                                           cleared by reading this register
-//                    [3]    = dma_done     — sticky latch: set by yuv_fb_dma done pulse,
-//                                           cleared by reading this register
-//                    [31:4] = 0 (reserved)
+//                    [2]    = fb_vbl         — sticky latch: set by ASCAL VBlank pulse,
+//                                             cleared by reading this register
+//                    [3]    = dma_done       — sticky latch: set by yuv_fb_dma done pulse,
+//                                             cleared by reading this register
+//                    [5]    = file_selected  — sticky latch: set when user selects video via OSD,
+//                                             cleared by reading this register
+//                    [31:6] = 0 (reserved)
 //
 //    Offset 0x008  Control Register  (read/write):
 //                    [0]    = buf_sel    — 0 = Buffer A, 1 = Buffer B
@@ -92,8 +94,9 @@ module mp4_ctrl_regs (
     input  wire        rready,
 
     // ── Application signals ───────────────────────────────────────────────────
-    input  wire        fb_vbl,      // vertical blank, clk_sys domain
-    input  wire        dma_done,    // FPGA DMA complete, clk_sys domain
+    input  wire        fb_vbl,         // vertical blank, clk_sys domain
+    input  wire        dma_done,       // FPGA DMA complete, clk_sys domain
+    input  wire        file_selected,  // OSD file selection pulse, clk_sys domain
 
     output reg         buf_sel,     // 0 = Buffer A, 1 = Buffer B
     output reg         dma_trigger, // one-clock pulse → start DMA
@@ -126,19 +129,21 @@ assign rlast = 1'b1;    // Always single-beat
 reg dma_done_latch;
 reg fb_vbl_latch;
 reg fb_vbl_d;
+reg file_selected_latch;  // OSD file selection sticky latch
 
 always @(posedge clk) begin
     if (!rst_n) begin
-        dma_done_latch <= 1'b0;
-        fb_vbl_latch   <= 1'b0;
-        fb_vbl_d       <= 1'b0;
+        dma_done_latch      <= 1'b0;
+        fb_vbl_latch        <= 1'b0;
+        fb_vbl_d            <= 1'b0;
+        file_selected_latch <= 1'b0;
     end else begin
         // SET has priority over CLEAR: if the pulse fires on the exact same
         // clock as the ARM's status read, the latch is SET (not cleared).
         // The ARM will see it on the next poll.  Using two independent 'if'
         // blocks would let the clear (being last in source order) win the
         // Verilog NB race, silently discarding the pulse → DMA timeout bug.
-        
+
         fb_vbl_d <= fb_vbl;
 
         if (dma_done)
@@ -150,6 +155,11 @@ always @(posedge clk) begin
             fb_vbl_latch   <= 1'b1;
         else if (arvalid & arready & (araddr[5:2] == 4'b0000))
             fb_vbl_latch   <= 1'b0;
+
+        if (file_selected)
+            file_selected_latch <= 1'b1;
+        else if (arvalid & arready & (araddr[5:2] == 4'b0000))
+            file_selected_latch <= 1'b0;
     end
 end
 
@@ -167,7 +177,7 @@ always @(posedge clk) begin
         if (arvalid & arready) begin
             rid <= arid;
             case (araddr[5:2])
-                4'b0000: rdata <= {28'b0, dma_done_latch, fb_vbl_latch, 2'b00}; // 0x000
+                4'b0000: rdata <= {26'b0, file_selected_latch, 1'b0, dma_done_latch, fb_vbl_latch, 2'b00}; // 0x000
                 4'b0010: rdata <= {30'b0, dma_trigger, buf_sel};            // 0x008
                 4'b0100: rdata <= yuv_y_base;                               // 0x010
                 4'b0101: rdata <= yuv_u_base;                               // 0x014

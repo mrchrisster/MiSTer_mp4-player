@@ -21,8 +21,28 @@ extern "C" {
 
 #define MP4_PLAY_VERSION "1"
 
+// CPU frequency control for performance boost
+#define CPUFREQ_FILE "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq"
+#define STOCK_FREQ   800000   // 800 MHz (stock)
+#define BOOST_FREQ   1000000  // 1000 MHz (safe overclock with cooling)
+
 static volatile sig_atomic_t g_stop = 0;
-static void on_signal(int sig) { (void)sig; g_stop = 1; }
+
+static void set_cpu_freq(int freq_khz) {
+    FILE* fp = fopen(CPUFREQ_FILE, "w");
+    if (fp) {
+        fprintf(fp, "%d", freq_khz);
+        fclose(fp);
+        fprintf(stderr, "[mp4_play] CPU freq set to %d kHz (%.0f MHz)\n",
+                freq_khz, freq_khz / 1000.0);
+    }
+}
+
+static void on_signal(int sig) {
+    (void)sig;
+    g_stop = 1;
+    set_cpu_freq(STOCK_FREQ);  // Restore stock frequency on exit
+}
 
 // ── Framebuffer parameters ────────────────────────────────────────────────────
 #define FB_PHYS   0x30000000UL  // Physical DDR3 address of Buffer A
@@ -213,9 +233,8 @@ static void write_yuv_and_dma(const AVFrame* f,
 // ~8 ms DMA+VBL wait behind concurrent decode, roughly halving the per-frame
 // wall time for 30 fps content.
 //
-// Ring buffer of depth 2:
-//   slot[head]         — frame currently consumed by display thread
-//   slot[(head+1) & 1] — pre-decoded next frame (or empty if not ready yet)
+// Ring buffer of depth 4 (increased from 2 to reduce drops with audio enabled):
+//   Gives decode thread more headroom for audio decode spikes
 //
 // Ownership protocol:
 //   - Each slot always holds a valid AVFrame* (either empty or filled).
@@ -224,14 +243,14 @@ static void write_yuv_and_dma(const AVFrame* f,
 //               av_frame_free() after use.  The fresh frame is immediately
 //               available for the decoder to fill.
 struct FrameQueue {
-    AVFrame*        f[2];       // ring of pre-allocated AVFrame structs
-    double          pts_s[2];   // PTS seconds for each slot
+    AVFrame*        f[4];       // ring of 4 pre-allocated AVFrame structs
+    double          pts_s[4];   // PTS seconds for each slot
     int             head;       // display thread reads from f[head]
-    int             count;      // 0..2 frames ready
+    int             count;      // 0..4 frames ready
     bool            eof;        // decoder has finished all frames
     pthread_mutex_t mu;
     pthread_cond_t  not_empty;  // signalled when count 0 -> 1
-    pthread_cond_t  not_full;   // signalled when count 2 -> 1
+    pthread_cond_t  not_full;   // signalled when count becomes < 4
 };
 
 // ── Audio frame queue ─────────────────────────────────────────────────────────
@@ -289,11 +308,11 @@ static void* decode_thread_fn(void* arg)
                 const double pts = vfrm->pts * av_q2d(a->vtb);
 
                 pthread_mutex_lock(&vq->mu);
-                while (vq->count == 2 && !g_stop)
+                while (vq->count == 4 && !g_stop)
                     pthread_cond_wait(&vq->not_full, &vq->mu);
                 if (g_stop) { pthread_mutex_unlock(&vq->mu); goto done; }
 
-                const int slot = (vq->head + vq->count) & 1;
+                const int slot = (vq->head + vq->count) & 3;
                 av_frame_move_ref(vq->f[slot], vfrm);
                 vq->pts_s[slot] = pts;
                 vq->count++;
@@ -363,6 +382,12 @@ static void* audio_play_thread_fn(void* arg)
 {
     AudioPlayArgs* a = (AudioPlayArgs*)arg;
     AudioQueue*    aq = a->aq;
+
+    // Pin audio playback to Core 0 (display core) - audio is I/O-bound, won't interfere much
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(0, &cpuset);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
 
     // ── Pre-playback: consume frames without output (prevents queue deadlock) ─
     fprintf(stderr, "[audio] thread ready, consuming frames until first video frame...\n");
@@ -683,7 +708,9 @@ static void play_video(const char* path,
     FrameQueue vq;
     vq.f[0]     = av_frame_alloc();
     vq.f[1]     = av_frame_alloc();
-    vq.pts_s[0] = vq.pts_s[1] = 0.0;
+    vq.f[2]     = av_frame_alloc();
+    vq.f[3]     = av_frame_alloc();
+    vq.pts_s[0] = vq.pts_s[1] = vq.pts_s[2] = vq.pts_s[3] = 0.0;
     vq.head     = 0;
     vq.count    = 0;
     vq.eof      = false;
@@ -768,7 +795,7 @@ static void play_video(const char* path,
             break;
         }
         vq.f[vq.head] = fresh;
-        vq.head       = (vq.head + 1) & 1;
+        vq.head       = (vq.head + 1) & 3;
         vq.count--;
         pthread_cond_signal(&vq.not_full);
         pthread_mutex_unlock(&vq.mu);
@@ -920,7 +947,7 @@ static void play_video(const char* path,
     }
 
     // ── Cleanup ───────────────────────────────────────────────────────────────
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 4; i++)
         if (vq.f[i]) av_frame_free(&vq.f[i]);
     pthread_cond_destroy(&vq.not_empty);
     pthread_cond_destroy(&vq.not_full);
@@ -953,6 +980,10 @@ int main(int argc, char** argv) {
     }
     signal(SIGINT,  on_signal);
     signal(SIGTERM, on_signal);
+
+    // Overclock CPU for better H.264 decode performance
+    // 1000 MHz = safe with heatsink + fan
+    set_cpu_freq(BOOST_FREQ);
 
     bool   benchmark = false;
     bool   no_audio  = false;
@@ -1006,6 +1037,9 @@ int main(int argc, char** argv) {
             (unsigned)YUV_Y_PHYS, YUV_Y_SIZE, YUV_U_SIZE, YUV_V_SIZE);
 
     play_video(argv[1], axi, yuv_y, yuv_u, yuv_v, benchmark, threads, seek_s, no_audio);
+
+    // Restore stock CPU frequency
+    set_cpu_freq(STOCK_FREQ);
 
     munmap(yuv_map, YUV_TOTAL);
     munmap(axi_map, AXI_SIZE);
