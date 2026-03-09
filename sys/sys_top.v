@@ -380,6 +380,10 @@ wire        fbs_avl_readdatavalid;
 wire        fbs_avl_read;
 wire  [7:0] fbs_r, fbs_g, fbs_b;
 
+// ── Switchres trigger from ARM daemon via AXI ────────────────────────────────
+wire        cmd_switchres_mp4;
+wire [31:0] switchres_frame_mp4;
+
 mp4_ctrl_regs mp4_regs (
     .clk     (clk_sys),    .rst_n   (~reset_req),
     .awaddr  (lw_awaddr),  .awid    (lw_awid),    .awlen   (lw_awlen),
@@ -400,7 +404,9 @@ mp4_ctrl_regs mp4_regs (
     .dma_done        (dma_done),
     .file_selected   (mp4_file_selected),
     .buf_sel         (buf_sel),
-    .dma_trigger (dma_trigger),
+    .dma_trigger     (dma_trigger),
+    .cmd_switchres_mp4   (cmd_switchres_mp4),
+    .switchres_frame_mp4 (switchres_frame_mp4),
     .yuv_y_base  (yuv_y_base),
     .yuv_u_base  (yuv_u_base),
     .yuv_v_base  (yuv_v_base),
@@ -2035,6 +2041,8 @@ emu emu
 	.FB_LL(lowlat),
 	.FB_FORCE_BLANK(fb_force_blank),
 	.MP4_FILE_SELECTED(mp4_file_selected),
+	.CMD_SWITCHRES_MP4(cmd_switchres_mp4),
+	.SWITCHRES_FRAME_MP4(switchres_frame_mp4),
 
 `ifdef MISTER_FB_PALETTE
 	.FB_PAL_CLK (fb_pal_clk),

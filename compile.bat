@@ -36,6 +36,32 @@ echo   Groovy MiSTer MP4 Player  ^|  Quartus 17.0 Full Compile
 echo ============================================================
 echo.
 
+:: ---- Git Auto-Commit: Save source changes before compile ----
+echo [Git] Checking for uncommitted changes...
+git diff-index --quiet HEAD --
+if %errorlevel% neq 0 (
+    echo [Git] Changes detected, creating auto-commit...
+
+    :: Build timestamp for commit message
+    for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value 2^>nul') do set "_dt=%%I"
+    set "TIMESTAMP=!_dt:~0,4!-!_dt:~4,2!-!_dt:~6,2! !_dt:~8,2!:!_dt:~10,2!:!_dt:~12,2!"
+
+    :: Stage source files (not db/ artifacts - those are in .gitignore)
+    git add -A
+
+    :: Create commit with timestamp + optional description
+    if "%DESC%"=="" (
+        git commit -m "Auto-commit before compile - !TIMESTAMP!"
+    ) else (
+        git commit -m "Auto-commit: %DESC% - !TIMESTAMP!"
+    )
+
+    echo [Git] Commit created successfully
+) else (
+    echo [Git] No changes to commit
+)
+echo.
+
 :: ---- Step 0: Generate build_id.v (date stamp used in the OSD version string) ----
 ::      build_id.tcl opens the project, reads the device/revision, closes it,
 ::      then writes build_id.v.  It is idempotent: re-running on the same date
@@ -124,5 +150,21 @@ copy "output_files\%PROJECT%.rbf" "releases\!RELEASE_NAME!" >nul
 echo Released to: releases\!RELEASE_NAME!
 
 :done
+
+:: ---- Optional GitHub Push ----
+::      Set environment variable AUTOPUSH=1 to enable:
+::      > set AUTOPUSH=1
+::      > compile.bat "my changes"
+if "%AUTOPUSH%"=="1" (
+    echo.
+    echo [Git] Pushing to GitHub...
+    git push origin main
+    if %errorlevel% neq 0 (
+        echo [Git] WARNING: Push failed. Check network connection or branch name.
+    ) else (
+        echo [Git] Pushed successfully to GitHub
+    )
+)
+
 echo.
 echo Done.

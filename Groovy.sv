@@ -77,6 +77,10 @@ module emu
    // MP4 player: signal file selection from OSD to ARM daemon
    output        MP4_FILE_SELECTED,
 
+   // MP4 player: Switchres trigger from ARM daemon (via AXI)
+   input         CMD_SWITCHRES_MP4,
+   input  [31:0] SWITCHRES_FRAME_MP4,
+
 `ifdef MISTER_FB_PALETTE
    // Palette control for 8bit modes.
    // Ignored for other video modes.
@@ -350,14 +354,13 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 // ARM DMA path: ioctl data from OSD file selection is discarded.
 // The ARM daemon writes decoded RGB565 frames directly to DDR3 @ 0x30000000.
-// Never throttle — MiSTer can drain the file transfer at full speed.
-assign ioctl_wait = 1'b0;
 
 // ─── File Selection Detection ────────────────────────────────────────────────
 // Detect when user selects a video file via OSD (FC2 = ioctl_index 2)
 // Set file_selected status bit for ARM daemon to detect
 reg        file_selected_latch = 1'b0;
 reg        ioctl_download_prev = 1'b0;
+reg [23:0] ioctl_stall_counter = 24'd0;
 
 always @(posedge clk_sys) begin
     ioctl_download_prev <= ioctl_download;
@@ -365,10 +368,19 @@ always @(posedge clk_sys) begin
     // Rising edge of ioctl_download for video files (index 2 = FC2)
     if (ioctl_download && !ioctl_download_prev && ioctl_index == 16'd2) begin
         file_selected_latch <= 1'b1;
+        ioctl_stall_counter <= 24'd41_500_000;  // 500ms stall at 83 MHz (enough time for launcher to detect)
+    end else if (ioctl_stall_counter > 0) begin
+        ioctl_stall_counter <= ioctl_stall_counter - 1'd1;
     end
+
     // Clear latch when bit is read by ARM (handled in mp4_ctrl_regs)
     // Note: mp4_ctrl_regs will wire this to status bit 5
 end
+
+// STALL FC2 downloads temporarily (500ms) to give launcher time to detect file selection.
+// After stall expires, let the transfer drain at full speed (data is discarded).
+// This prevents: (1) system hang from permanent stall, (2) missing small files that transfer too fast.
+assign ioctl_wait = (ioctl_stall_counter > 0) && ioctl_download && (ioctl_index == 16'd2);
 
 // OSD option visibility
 wire [15:0] status_menumask; // a high value hides the menu item
@@ -395,12 +407,16 @@ assign status_menumask[15] = 0,
 
 
 wire [35:0] EXT_BUS;
-reg  reset_switchres = 0, vga_frameskip = 0, vga_frameskip_prev = 0, reset_blit = 0, auto_blit = 0, reset_audio = 0, cmd_fskip = 0, reset_blit_lz4 = 0, auto_blit_lz4 = 0; 
-wire cmd_init, cmd_switchres, cmd_blit, cmd_logo, cmd_audio, cmd_blit_lz4, cmd_blit_vsync; 
+reg  reset_switchres = 0, vga_frameskip = 0, vga_frameskip_prev = 0, reset_blit = 0, auto_blit = 0, reset_audio = 0, cmd_fskip = 0, reset_blit_lz4 = 0, auto_blit_lz4 = 0;
+wire cmd_init, cmd_switchres_hps, cmd_blit, cmd_logo, cmd_audio, cmd_blit_lz4, cmd_blit_vsync;
 wire [15:0] audio_samples;
 wire [1:0] sound_rate, sound_chan, rgb_mode, lz4_field, lz4_ABCD;
 wire lz4_delta;
-wire [31:0] lz4_size, switchres_frame;
+wire [31:0] lz4_size, switchres_frame_hps;
+
+// Combine MP4 Switchres trigger with GroovyMAME trigger
+wire cmd_switchres = cmd_switchres_hps | CMD_SWITCHRES_MP4;
+wire [31:0] switchres_frame = CMD_SWITCHRES_MP4 ? SWITCHRES_FRAME_MP4 : switchres_frame_hps;
 
 hps_ext hps_ext
 (
@@ -422,10 +438,10 @@ hps_ext hps_ext
         .vram_synced(vram_synced),     
         .vram_end_frame(vram_end_frame),             
         .vram_ready(vram_req_ready),
-        .cmd_init(cmd_init),      
+        .cmd_init(cmd_init),
         .reset_switchres(reset_switchres),
-        .cmd_switchres(cmd_switchres),
-        .switchres_frame(switchres_frame),
+        .cmd_switchres(cmd_switchres_hps),
+        .switchres_frame(switchres_frame_hps),
         .reset_blit(reset_blit),
         .cmd_blit(cmd_blit),
         .cmd_logo(cmd_logo),
@@ -787,25 +803,23 @@ reg [23:0] PoC_frame_ddr       = 24'd0;
 reg [15:0] PoC_subframe_bl_ddr = 16'd0;
 reg [23:0] PoC_subframe_px_ddr = 24'd0;
 
-// Modeline from arm (default 640x480 VGA for MP4 player)
-reg [15:0] PoC_H          = 16'd640;
-reg [7:0]  PoC_HFP        = 8'd16;
-reg [7:0]  PoC_HS         = 8'd96;
-reg [7:0]  PoC_HBP        = 8'd48;
-reg [15:0] PoC_V          = 16'd480;
-reg [7:0]  PoC_VFP        = 8'd10;
-reg [7:0]  PoC_VS         = 8'd2;
-reg [7:0]  PoC_VBP        = 8'd33;
+// Modeline from arm (default 256x240 sms)
+reg [15:0] PoC_H          = 16'd256;
+reg [7:0]  PoC_HFP        = 8'd10;
+reg [7:0]  PoC_HS         = 8'd24;
+reg [7:0]  PoC_HBP        = 8'd41;
+reg [15:0] PoC_V          = 16'd240;
+reg [7:0]  PoC_VFP        = 8'd2;
+reg [7:0]  PoC_VS         = 8'd3;
+reg [7:0]  PoC_VBP        = 8'd16;
 
-// PLL (default 60hz for 640x480 VGA)
-// Pixel clock needed: 800×525×60 = 25.2 MHz
-// With ce_pix=4 and PLL output ~100 MHz → pixel clock = 100/4 = 25 MHz ≈ 25.2 MHz
+// PLL (default 60hz for sms)
 reg [7:0]  PoC_pll_F_M0   = 8'd4;
 reg [7:0]  PoC_pll_F_M1   = 8'd4;
 reg [7:0]  PoC_pll_F_C0   = 8'd3;
 reg [7:0]  PoC_pll_F_C1   = 8'd2;
 reg [31:0] PoC_pll_F_K    = 32'd1182682725;
-reg [7:0]  PoC_ce_pix     = 8'd4;
+reg [7:0]  PoC_ce_pix     = 8'd16;
 
 reg        PoC_pll_S      = 1'b0; //scandoubler 480i
 

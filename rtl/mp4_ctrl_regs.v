@@ -20,6 +20,10 @@
 //                    [1]    = dma_start  — write 1 to start DMA (auto-clears)
 //                    [31:2] = 0 (reserved)
 //
+//    Offset 0x00C  Switchres Control  (read/write):
+//                    [0]    = trigger_switchres — write 1 to trigger (auto-clears)
+//                    [31:1] = switchres_frame   — frame number when to apply (0=immediate)
+//
 //    Offset 0x010  YUV Y plane base address  (read/write, 32-bit byte addr)
 //    Offset 0x014  YUV U plane base address  (read/write, 32-bit byte addr)
 //    Offset 0x018  YUV V plane base address  (read/write, 32-bit byte addr)
@@ -101,6 +105,9 @@ module mp4_ctrl_regs (
     output reg         buf_sel,     // 0 = Buffer A, 1 = Buffer B
     output reg         dma_trigger, // one-clock pulse → start DMA
 
+    output reg         cmd_switchres_mp4,   // one-clock pulse → trigger Switchres
+    output reg  [31:0] switchres_frame_mp4, // frame number when to apply (0=immediate)
+
     output reg  [31:0] yuv_y_base,  // Y plane DDR3 byte address
     output reg  [31:0] yuv_u_base,  // U plane DDR3 byte address
     output reg  [31:0] yuv_v_base,  // V plane DDR3 byte address
@@ -179,6 +186,7 @@ always @(posedge clk) begin
             case (araddr[5:2])
                 4'b0000: rdata <= {26'b0, file_selected_latch, 1'b0, dma_done_latch, fb_vbl_latch, 2'b00}; // 0x000
                 4'b0010: rdata <= {30'b0, dma_trigger, buf_sel};            // 0x008
+                4'b0011: rdata <= {switchres_frame_mp4[30:0], cmd_switchres_mp4}; // 0x00C
                 4'b0100: rdata <= yuv_y_base;                               // 0x010
                 4'b0101: rdata <= yuv_u_base;                               // 0x014
                 4'b0110: rdata <= yuv_v_base;                               // 0x018
@@ -214,10 +222,12 @@ always @(posedge clk) begin
         w_pend      <= 1'b0;
         bvalid      <= 1'b0;
         bid         <= 12'b0;
-        buf_sel     <= 1'b0;
-        next_buf_sel<= 1'b0;
-        dma_trigger <= 1'b0;
-        yuv_y_base  <= 32'h3012C000;  // default layout after RGB buffers
+        buf_sel           <= 1'b0;
+        next_buf_sel      <= 1'b0;
+        dma_trigger       <= 1'b0;
+        cmd_switchres_mp4 <= 1'b0;
+        switchres_frame_mp4 <= 32'b0;
+        yuv_y_base        <= 32'h3012C000;  // default layout after RGB buffers
         yuv_u_base  <= 32'h30177000;
         yuv_v_base  <= 32'h30189C00;
         yuv_rgb_base<= 32'h30000000;  // default: write to Buffer A
@@ -229,8 +239,9 @@ always @(posedge clk) begin
             buf_sel <= next_buf_sel;
         end
 
-        // dma_trigger is a one-clock pulse; auto-clear every cycle
+        // dma_trigger and cmd_switchres_mp4 are one-clock pulses; auto-clear every cycle
         dma_trigger <= 1'b0;
+        cmd_switchres_mp4 <= 1'b0;
 
         // Latch write address
         if (awvalid & awready) begin
@@ -251,6 +262,10 @@ always @(posedge clk) begin
                 3'b010: begin                   // 0x008 Control
                     next_buf_sel<= wd_lat[0];
                     dma_trigger <= wd_lat[1];   // one-clock pulse
+                end
+                3'b011: begin                   // 0x00C Switchres Control
+                    cmd_switchres_mp4   <= wd_lat[0];       // one-clock pulse
+                    switchres_frame_mp4 <= {wd_lat[31:1], 1'b0}; // frame number
                 end
                 3'b100: yuv_y_base   <= wd_lat; // 0x010
                 3'b101: yuv_u_base   <= wd_lat; // 0x014
