@@ -11,9 +11,9 @@ FFMPEG_PREFIX ?= /opt/ffmpeg-arm
 INCLUDES = -I$(FFMPEG_PREFIX)/include
 LDFLAGS  = -L$(FFMPEG_PREFIX)/lib -L/usr/lib/arm-linux-gnueabihf
 LIBS     = -Wl,-Bstatic \
-               -lavformat -lavcodec -lavutil -lswresample -lasound \
+               -lavformat -lavcodec -lavutil -lswresample \
            -Wl,-Bdynamic \
-               -lm -lpthread -lz -ldl
+               -lm -lpthread -lz -ldl -lasound
 
 # Output binaries
 TARGET   = mp4_play
