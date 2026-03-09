@@ -15,7 +15,7 @@
 //    Each field has 262 total lines (240 active + 22 blanking).
 //
 //  480i NTSC TIMING (per field):
-//    H: 858 total (640 active, 16 FP, 96 sync, 106 BP)
+//    H: 858 total (640 active, 16 FP, 62 sync, 140 BP) — matches PSX core
 //    V: 262 total (240 active, 4 FP, 3 sync, 15 BP)
 //    Pixel clock: 13.5 MHz (from clk_sys ~83 MHz via CE divider)
 //
@@ -54,10 +54,11 @@ module fb_scan_out #(
 );
 
 // ── 480i Timing Parameters ────────────────────────────────────────────────
+// Standard NTSC 480i timing (matches PSX core)
 localparam H_ACTIVE = 640;
-localparam H_FP     = 16;
-localparam H_SYNC   = 96;
-localparam H_BP     = 106;
+localparam H_FP     = 16;   // Front porch
+localparam H_SYNC   = 62;   // Sync pulse (standard NTSC)
+localparam H_BP     = 140;  // Back porch (increased to shift image left vs PSX)
 localparam H_TOTAL  = H_ACTIVE + H_FP + H_SYNC + H_BP;  // 858
 
 localparam V_ACTIVE = 240;  // per field
