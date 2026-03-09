@@ -13,7 +13,11 @@
       "Read(//c/Users/christoph/.claude/projects/c--code-MiSTer-mp4-player/memory/**)",
       "Bash(make clean:*)",
       "Bash(make:*)",
-      "Bash(dpkg:*)"
+      "Bash(dpkg:*)",
+      "Bash(./compile.bat)",
+      "Bash(tee:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)"
     ],
     "additionalDirectories": [
       "c:\\code\\mpeg2fpga-master\\rtl",

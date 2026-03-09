@@ -1,6 +1,6 @@
 CXX      = arm-linux-gnueabihf-g++
 # Match FFmpeg's ARM optimization flags for YUV scaling code
-CFLAGS   = -Wall -O3 -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -std=c++11 -D_FILE_OFFSET_BITS=64
+CFLAGS   = -Wall -O3 -march=armv7-a -mfpu=neon -mfloat-abi=hard -std=c++11 -D_FILE_OFFSET_BITS=64
 STRIP    = arm-linux-gnueabihf-strip
 
 # Path to static FFmpeg ARM build.
@@ -49,3 +49,6 @@ test_yuv_dump: test_yuv_dump.cpp
 
 clean:
 	rm -f $(TARGET) $(TESTS)
+
+test_switchres_pattern: test_switchres_pattern.cpp
+	$(CXX) $(CXXFLAGS) -o test_switchres_pattern test_switchres_pattern.cpp

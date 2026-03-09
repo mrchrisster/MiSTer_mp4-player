@@ -321,3 +321,4 @@ set_global_assignment -name VERILOG_FILE rtl/mp4_debug_uart.v
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/fb_arb.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/fb_scan_out.sv
 set_global_assignment -name VERILOG_FILE rtl/yuv_dma_debug.v
+set_global_assignment -name VERILOG_FILE rtl/ram2_arb.v

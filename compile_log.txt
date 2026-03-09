@@ -1,0 +1,901 @@
+
+============================================================
+  Groovy MiSTer MP4 Player  |  Quartus 17.0 Full Compile
+============================================================
+
+[0/4] Generating build_id.v  (quartus_sh) ...
+Info: *******************************************************************
+Info: Running Quartus Prime Shell
+    Info: Version 17.0.0 Build 595 04/25/2017 SJ Lite Edition
+    Info: Copyright (C) 2017  Intel Corporation. All rights reserved.
+    Info: Your use of Intel Corporation's design tools, logic functions 
+    Info: and other software and tools, and its AMPP partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Intel Program License 
+    Info: Subscription Agreement, the Intel Quartus Prime License Agreement,
+    Info: the Intel MegaCore Function License Agreement, or other 
+    Info: applicable license agreement, including, without limitation, 
+    Info: that your use is for the sole purpose of programming logic 
+    Info: devices manufactured by Intel and sold by Intel or its 
+    Info: authorized distributors.  Please refer to the applicable 
+    Info: agreement for further details.
+    Info: Processing started: Wed Mar 04 09:24:51 2026
+Info: Command: quartus_sh -t sys/build_id.tcl Groovy Groovy
+Info: Quartus(args): Groovy Groovy
+Info (23030): Evaluation of Tcl script sys/build_id.tcl was successful
+Info: Quartus Prime Shell was successful. 0 errors, 0 warnings
+    Info: Peak virtual memory: 4757 megabytes
+    Info: Processing ended: Wed Mar 04 09:24:52 2026
+    Info: Elapsed time: 00:00:01
+    Info: Total CPU time (on all processors): 00:00:00
+[1/4] Analysis & Synthesis  (quartus_map) ...
+Info: *******************************************************************
+Info: Running Quartus Prime Analysis & Synthesis
+    Info: Version 17.0.0 Build 595 04/25/2017 SJ Lite Edition
+    Info: Copyright (C) 2017  Intel Corporation. All rights reserved.
+    Info: Your use of Intel Corporation's design tools, logic functions 
+    Info: and other software and tools, and its AMPP partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Intel Program License 
+    Info: Subscription Agreement, the Intel Quartus Prime License Agreement,
+    Info: the Intel MegaCore Function License Agreement, or other 
+    Info: applicable license agreement, including, without limitation, 
+    Info: that your use is for the sole purpose of programming logic 
+    Info: devices manufactured by Intel and sold by Intel or its 
+    Info: authorized distributors.  Please refer to the applicable 
+    Info: agreement for further details.
+    Info: Processing started: Wed Mar 04 09:24:52 2026
+Info: Command: quartus_map Groovy
+Info (16303): Aggressive Performance optimization mode selected -- timing performance will be prioritized at the potential cost of increased logic area and compilation time
+    Info (16304): Mode behavior is affected by advanced setting Restructure Multiplexers (default for this mode is Off)
+Info (20030): Parallel compilation is enabled and will use 16 of the 16 processors detected
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/pll.v
+    Info (12023): Found entity 1: pll File: C:/code/MiSTer_mp4_player/rtl/pll.v Line: 8
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/pll/pll_0002.v
+    Info (12023): Found entity 1: pll_0002 File: C:/code/MiSTer_mp4_player/rtl/pll/pll_0002.v Line: 2
+Info (12021): Found 1 design units, including 1 entities, in source file sys/pll_hdmi.v
+    Info (12023): Found entity 1: pll_hdmi File: C:/code/MiSTer_mp4_player/sys/pll_hdmi.v Line: 8
+Info (12021): Found 1 design units, including 1 entities, in source file sys/pll_hdmi/pll_hdmi_0002.v
+    Info (12023): Found entity 1: pll_hdmi_0002 File: C:/code/MiSTer_mp4_player/sys/pll_hdmi/pll_hdmi_0002.v Line: 2
+Info (12021): Found 1 design units, including 1 entities, in source file sys/pll_audio.v
+    Info (12023): Found entity 1: pll_audio File: C:/code/MiSTer_mp4_player/sys/pll_audio.v Line: 8
+Info (12021): Found 1 design units, including 1 entities, in source file sys/pll_audio/pll_audio_0002.v
+    Info (12023): Found entity 1: pll_audio_0002 File: C:/code/MiSTer_mp4_player/sys/pll_audio/pll_audio_0002.v Line: 2
+Info (12021): Found 1 design units, including 1 entities, in source file sys/pll_cfg/pll_cfg.v
+    Info (12023): Found entity 1: pll_cfg File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg.v Line: 8
+Info (12021): Found 1 design units, including 1 entities, in source file sys/pll_cfg/pll_cfg_hdmi.v
+    Info (12023): Found entity 1: pll_cfg_hdmi File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg_hdmi.v Line: 16
+Info (12021): Found 1 design units, including 1 entities, in source file sys/pll_cfg/altera_pll_reconfig_top.v
+    Info (12023): Found entity 1: altera_pll_reconfig_top File: C:/code/MiSTer_mp4_player/sys/pll_cfg/altera_pll_reconfig_top.v Line: 16
+Info (12021): Found 3 design units, including 3 entities, in source file sys/sys_top.v
+    Info (12023): Found entity 1: sys_top File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 22
+    Info (12023): Found entity 2: sync_fix File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 2123
+    Info (12023): Found entity 3: csync File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 2155
+Info (12021): Found 2 design units, including 1 entities, in source file sys/ascal.vhd
+    Info (12022): Found design unit 1: ascal-rtl File: C:/code/MiSTer_mp4_player/sys/ascal.vhd Line: 265
+    Info (12023): Found entity 1: ascal File: C:/code/MiSTer_mp4_player/sys/ascal.vhd Line: 114
+Info (12021): Found 2 design units, including 1 entities, in source file sys/pll_hdmi_adj.vhd
+    Info (12022): Found design unit 1: pll_hdmi_adj-rtl File: C:/code/MiSTer_mp4_player/sys/pll_hdmi_adj.vhd Line: 53
+    Info (12023): Found entity 1: pll_hdmi_adj File: C:/code/MiSTer_mp4_player/sys/pll_hdmi_adj.vhd Line: 21
+Info (12021): Found 3 design units, including 3 entities, in source file sys/math.sv
+    Info (12023): Found entity 1: sys_udiv File: C:/code/MiSTer_mp4_player/sys/math.sv Line: 3
+    Info (12023): Found entity 2: sys_umul File: C:/code/MiSTer_mp4_player/sys/math.sv Line: 46
+    Info (12023): Found entity 3: sys_umuldiv File: C:/code/MiSTer_mp4_player/sys/math.sv Line: 85
+Info (12021): Found 5 design units, including 5 entities, in source file sys/hq2x.sv
+    Info (12023): Found entity 1: Hq2x File: C:/code/MiSTer_mp4_player/sys/hq2x.sv Line: 13
+    Info (12023): Found entity 2: hq2x_in File: C:/code/MiSTer_mp4_player/sys/hq2x.sv Line: 226
+    Info (12023): Found entity 3: hq2x_buf File: C:/code/MiSTer_mp4_player/sys/hq2x.sv Line: 250
+    Info (12023): Found entity 4: DiffCheck File: C:/code/MiSTer_mp4_player/sys/hq2x.sv Line: 271
+    Info (12023): Found entity 5: Blend File: C:/code/MiSTer_mp4_player/sys/hq2x.sv Line: 298
+Info (12021): Found 1 design units, including 1 entities, in source file sys/scandoubler.v
+    Info (12023): Found entity 1: scandoubler File: C:/code/MiSTer_mp4_player/sys/scandoubler.v Line: 22
+Info (12021): Found 1 design units, including 1 entities, in source file sys/scanlines.v
+    Info (12023): Found entity 1: scanlines File: C:/code/MiSTer_mp4_player/sys/scanlines.v Line: 1
+Info (12021): Found 1 design units, including 1 entities, in source file sys/shadowmask.sv
+    Info (12023): Found entity 1: shadowmask File: C:/code/MiSTer_mp4_player/sys/shadowmask.sv Line: 1
+Info (12021): Found 2 design units, including 2 entities, in source file sys/video_cleaner.sv
+    Info (12023): Found entity 1: video_cleaner File: C:/code/MiSTer_mp4_player/sys/video_cleaner.sv Line: 12
+    Info (12023): Found entity 2: s_fix File: C:/code/MiSTer_mp4_player/sys/video_cleaner.sv Line: 81
+Info (12021): Found 2 design units, including 2 entities, in source file sys/gamma_corr.sv
+    Info (12023): Found entity 1: gamma_corr File: C:/code/MiSTer_mp4_player/sys/gamma_corr.sv Line: 1
+    Info (12023): Found entity 2: gamma_fast File: C:/code/MiSTer_mp4_player/sys/gamma_corr.sv Line: 62
+Info (12021): Found 1 design units, including 1 entities, in source file sys/video_mixer.sv
+    Info (12023): Found entity 1: video_mixer File: C:/code/MiSTer_mp4_player/sys/video_mixer.sv Line: 19
+Info (12021): Found 2 design units, including 2 entities, in source file sys/video_freak.sv
+    Info (12023): Found entity 1: video_freak File: C:/code/MiSTer_mp4_player/sys/video_freak.sv Line: 16
+    Info (12023): Found entity 2: video_scale_int File: C:/code/MiSTer_mp4_player/sys/video_freak.sv Line: 141
+Info (12021): Found 2 design units, including 2 entities, in source file sys/video_freezer.sv
+    Info (12023): Found entity 1: video_freezer File: C:/code/MiSTer_mp4_player/sys/video_freezer.sv Line: 21
+    Info (12023): Found entity 2: sync_lock File: C:/code/MiSTer_mp4_player/sys/video_freezer.sv Line: 80
+Info (12021): Found 2 design units, including 2 entities, in source file sys/arcade_video.v
+    Info (12023): Found entity 1: arcade_video File: C:/code/MiSTer_mp4_player/sys/arcade_video.v Line: 29
+    Info (12023): Found entity 2: screen_rotate File: C:/code/MiSTer_mp4_player/sys/arcade_video.v Line: 168
+Info (12021): Found 1 design units, including 1 entities, in source file sys/osd.v
+    Info (12023): Found entity 1: osd File: C:/code/MiSTer_mp4_player/sys/osd.v Line: 4
+Info (12021): Found 1 design units, including 1 entities, in source file sys/vga_out.sv
+    Info (12023): Found entity 1: vga_out File: C:/code/MiSTer_mp4_player/sys/vga_out.sv Line: 2
+Info (12021): Found 1 design units, including 1 entities, in source file sys/yc_out.sv
+    Info (12023): Found entity 1: yc_out File: C:/code/MiSTer_mp4_player/sys/yc_out.sv Line: 28
+Info (12021): Found 1 design units, including 1 entities, in source file sys/i2c.v
+    Info (12023): Found entity 1: i2c File: C:/code/MiSTer_mp4_player/sys/i2c.v Line: 2
+Info (12021): Found 1 design units, including 1 entities, in source file sys/alsa.sv
+    Info (12023): Found entity 1: alsa File: C:/code/MiSTer_mp4_player/sys/alsa.sv Line: 22
+Info (12021): Found 1 design units, including 1 entities, in source file sys/i2s.v
+    Info (12023): Found entity 1: i2s File: C:/code/MiSTer_mp4_player/sys/i2s.v Line: 2
+Info (12021): Found 1 design units, including 1 entities, in source file sys/spdif.v
+    Info (12023): Found entity 1: spdif File: C:/code/MiSTer_mp4_player/sys/spdif.v Line: 33
+Info (12021): Found 2 design units, including 2 entities, in source file sys/audio_out.v
+    Info (12023): Found entity 1: audio_out File: C:/code/MiSTer_mp4_player/sys/audio_out.v Line: 2
+    Info (12023): Found entity 2: aud_mix_top File: C:/code/MiSTer_mp4_player/sys/audio_out.v Line: 258
+Info (12021): Found 3 design units, including 3 entities, in source file sys/iir_filter.v
+    Info (12023): Found entity 1: IIR_filter File: C:/code/MiSTer_mp4_player/sys/iir_filter.v Line: 22
+    Info (12023): Found entity 2: iir_filter_tap File: C:/code/MiSTer_mp4_player/sys/iir_filter.v Line: 148
+    Info (12023): Found entity 3: DC_blocker File: C:/code/MiSTer_mp4_player/sys/iir_filter.v Line: 189
+Info (12021): Found 2 design units, including 2 entities, in source file sys/ltc2308.sv
+    Info (12023): Found entity 1: ltc2308 File: C:/code/MiSTer_mp4_player/sys/ltc2308.sv Line: 28
+    Info (12023): Found entity 2: ltc2308_tape File: C:/code/MiSTer_mp4_player/sys/ltc2308.sv Line: 105
+Info (12021): Found 1 design units, including 1 entities, in source file sys/sigma_delta_dac.v
+    Info (12023): Found entity 1: sigma_delta_dac File: C:/code/MiSTer_mp4_player/sys/sigma_delta_dac.v Line: 6
+Info (12021): Found 1 design units, including 1 entities, in source file sys/mt32pi.sv
+    Info (12023): Found entity 1: mt32pi File: C:/code/MiSTer_mp4_player/sys/mt32pi.sv Line: 8
+Info (12021): Found 1 design units, including 1 entities, in source file sys/mcp23009.sv
+    Info (12023): Found entity 1: mcp23009 File: C:/code/MiSTer_mp4_player/sys/mcp23009.sv Line: 5
+Info (12021): Found 1 design units, including 1 entities, in source file sys/f2sdram_safe_terminator.sv
+    Info (12023): Found entity 1: f2sdram_safe_terminator File: C:/code/MiSTer_mp4_player/sys/f2sdram_safe_terminator.sv Line: 55
+Info (12021): Found 1 design units, including 1 entities, in source file sys/ddr_svc.sv
+    Info (12023): Found entity 1: ddr_svc File: C:/code/MiSTer_mp4_player/sys/ddr_svc.sv Line: 23
+Info (12021): Found 2 design units, including 2 entities, in source file sys/sysmem.sv
+    Info (12023): Found entity 1: sysmem_lite File: C:/code/MiSTer_mp4_player/sys/sysmem.sv Line: 2
+    Info (12023): Found entity 2: sysmem_HPS_fpga_interfaces File: C:/code/MiSTer_mp4_player/sys/sysmem.sv Line: 241
+Info (12021): Found 1 design units, including 1 entities, in source file sys/sd_card.sv
+    Info (12023): Found entity 1: sd_card File: C:/code/MiSTer_mp4_player/sys/sd_card.sv Line: 28
+Info (12021): Found 4 design units, including 4 entities, in source file sys/hps_io.sv
+    Info (12023): Found entity 1: hps_io File: C:/code/MiSTer_mp4_player/sys/hps_io.sv Line: 30
+    Info (12023): Found entity 2: ps2_device File: C:/code/MiSTer_mp4_player/sys/hps_io.sv Line: 717
+    Info (12023): Found entity 3: video_calc File: C:/code/MiSTer_mp4_player/sys/hps_io.sv Line: 860
+    Info (12023): Found entity 4: confstr_rom File: C:/code/MiSTer_mp4_player/sys/hps_io.sv Line: 1028
+Info (12021): Found 1 design units, including 1 entities, in source file sys/vga_pwm.v
+    Info (12023): Found entity 1: vga_pwm File: C:/code/MiSTer_mp4_player/sys/vga_pwm.v Line: 2
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/binary_to_bcd.v
+    Info (12023): Found entity 1: binary_to_bcd File: C:/code/MiSTer_mp4_player/rtl/binary_to_bcd.v Line: 30
+Info (12021): Found 2 design units, including 1 entities, in source file rtl/vga_overlay.vhd
+    Info (12022): Found design unit 1: vga_overlay-arch File: C:/code/MiSTer_mp4_player/rtl/vga_overlay.vhd Line: 32
+    Info (12023): Found entity 1: vga_overlay File: C:/code/MiSTer_mp4_player/rtl/vga_overlay.vhd Line: 5
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/fifo_vga.v
+    Info (12023): Found entity 1: fifo_vga File: C:/code/MiSTer_mp4_player/rtl/fifo_vga.v Line: 40
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/fifo_sound.v
+    Info (12023): Found entity 1: fifo_sound File: C:/code/MiSTer_mp4_player/rtl/fifo_sound.v Line: 40
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/lz4.v
+    Info (12023): Found entity 1: lz4 File: C:/code/MiSTer_mp4_player/rtl/lz4.v Line: 23
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/hps_ext.v
+    Info (12023): Found entity 1: hps_ext File: C:/code/MiSTer_mp4_player/rtl/hps_ext.v Line: 21
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/jtframe/jtframe_resync.v
+    Info (12023): Found entity 1: jtframe_resync File: C:/code/MiSTer_mp4_player/rtl/JTFRAME/jtframe_resync.v Line: 19
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/jtframe/jtframe_hsize.v
+    Info (12023): Found entity 1: jtframe_hsize File: C:/code/MiSTer_mp4_player/rtl/JTFRAME/jtframe_hsize.v Line: 4
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/vga.v
+    Info (12023): Found entity 1: vga File: C:/code/MiSTer_mp4_player/rtl/vga.v Line: 6
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/sound.v
+    Info (12023): Found entity 1: sound File: C:/code/MiSTer_mp4_player/rtl/sound.v Line: 6
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/ddram.sv
+    Info (12023): Found entity 1: ddram File: C:/code/MiSTer_mp4_player/rtl/ddram.sv Line: 22
+Info (12021): Found 1 design units, including 1 entities, in source file groovy.sv
+    Info (12023): Found entity 1: emu File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 19
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/mp4_ctrl_regs.v
+    Info (12023): Found entity 1: mp4_ctrl_regs File: C:/code/MiSTer_mp4_player/rtl/mp4_ctrl_regs.v Line: 46
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/yuv_fb_dma.v
+    Info (12023): Found entity 1: yuv_fb_dma File: C:/code/MiSTer_mp4_player/rtl/yuv_fb_dma.v Line: 39
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/yuv_to_rgb.sv
+    Info (12023): Found entity 1: yuv_to_rgb File: C:/code/MiSTer_mp4_player/rtl/yuv_to_rgb.sv Line: 20
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/uart_tx.v
+    Info (12023): Found entity 1: uart_tx File: C:/code/MiSTer_mp4_player/rtl/uart_tx.v Line: 1
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/mp4_debug_uart.v
+    Info (12023): Found entity 1: mp4_debug_uart File: C:/code/MiSTer_mp4_player/rtl/mp4_debug_uart.v Line: 32
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/fb_arb.sv
+    Info (12023): Found entity 1: fb_arb File: C:/code/MiSTer_mp4_player/rtl/fb_arb.sv Line: 27
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/fb_scan_out.sv
+    Info (12023): Found entity 1: fb_scan_out File: C:/code/MiSTer_mp4_player/rtl/fb_scan_out.sv Line: 44
+Info (12021): Found 1 design units, including 1 entities, in source file rtl/yuv_dma_debug.v
+    Info (12023): Found entity 1: yuv_dma_debug File: C:/code/MiSTer_mp4_player/rtl/yuv_dma_debug.v Line: 16
+Info (12127): Elaborating entity "sys_top" for the top level hierarchy
+Info (12128): Elaborating entity "mcp23009" for hierarchy "mcp23009:mcp23009" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 174
+Info (12128): Elaborating entity "i2c" for hierarchy "mcp23009:mcp23009|i2c:i2c" File: C:/code/MiSTer_mp4_player/sys/mcp23009.sv Line: 41
+Info (12128): Elaborating entity "mp4_ctrl_regs" for hierarchy "mp4_ctrl_regs:mp4_regs" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 408
+Info (12128): Elaborating entity "yuv_fb_dma" for hierarchy "yuv_fb_dma:yuv_dma" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 432
+Warning (10999): Verilog HDL warning at yuv_fb_dma.v(88): can't infer memory for variable 'u_buf' with attribute '"M10K, no_rw_check"'. File: C:/code/MiSTer_mp4_player/rtl/yuv_fb_dma.v Line: 88
+Warning (10999): Verilog HDL warning at yuv_fb_dma.v(89): can't infer memory for variable 'v_buf' with attribute '"M10K, no_rw_check"'. File: C:/code/MiSTer_mp4_player/rtl/yuv_fb_dma.v Line: 89
+Warning (10036): Verilog HDL or VHDL warning at yuv_fb_dma.v(92): object "rgb_buf" assigned a value but never read File: C:/code/MiSTer_mp4_player/rtl/yuv_fb_dma.v Line: 92
+Warning (10036): Verilog HDL or VHDL warning at yuv_fb_dma.v(130): object "y_row_byte" assigned a value but never read File: C:/code/MiSTer_mp4_player/rtl/yuv_fb_dma.v Line: 130
+Info (12128): Elaborating entity "yuv_to_rgb" for hierarchy "yuv_fb_dma:yuv_dma|yuv_to_rgb:yuv_conv" File: C:/code/MiSTer_mp4_player/rtl/yuv_fb_dma.v Line: 152
+Info (12128): Elaborating entity "yuv_dma_debug" for hierarchy "yuv_fb_dma:yuv_dma|yuv_dma_debug:debug_logger" File: C:/code/MiSTer_mp4_player/rtl/yuv_fb_dma.v Line: 456
+Warning (10030): Net "msg_buf[40..63]" at yuv_dma_debug.v(73) has no driver or initial value, using a default initial value '0' File: C:/code/MiSTer_mp4_player/rtl/yuv_dma_debug.v Line: 73
+Info (12128): Elaborating entity "uart_tx" for hierarchy "yuv_fb_dma:yuv_dma|yuv_dma_debug:debug_logger|uart_tx:uart" File: C:/code/MiSTer_mp4_player/rtl/yuv_dma_debug.v Line: 68
+Info (12128): Elaborating entity "fb_scan_out" for hierarchy "fb_scan_out:fbs" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 469
+Info (12128): Elaborating entity "sysmem_lite" for hierarchy "sysmem_lite:sysmem" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 838
+Info (12128): Elaborating entity "f2sdram_safe_terminator" for hierarchy "sysmem_lite:sysmem|f2sdram_safe_terminator:f2sdram_safe_terminator_ram1" File: C:/code/MiSTer_mp4_player/sys/sysmem.sv Line: 91
+Info (12128): Elaborating entity "f2sdram_safe_terminator" for hierarchy "sysmem_lite:sysmem|f2sdram_safe_terminator:f2sdram_safe_terminator_vbuf" File: C:/code/MiSTer_mp4_player/sys/sysmem.sv Line: 183
+Info (12128): Elaborating entity "sysmem_HPS_fpga_interfaces" for hierarchy "sysmem_lite:sysmem|sysmem_HPS_fpga_interfaces:fpga_interfaces" File: C:/code/MiSTer_mp4_player/sys/sysmem.sv Line: 223
+Info (12128): Elaborating entity "ddr_svc" for hierarchy "ddr_svc:ddr_svc" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 879
+Info (12128): Elaborating entity "ascal" for hierarchy "ascal:ascal" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1013
+Info (12128): Elaborating entity "altsyncram" for hierarchy "ascal:ascal|altsyncram:i_mem[0].r[7]__1"
+Info (12130): Elaborated megafunction instantiation "ascal:ascal|altsyncram:i_mem[0].r[7]__1"
+Info (12133): Instantiated megafunction "ascal:ascal|altsyncram:i_mem[0].r[7]__1" with the following parameter:
+    Info (12134): Parameter "OPERATION_MODE" = "DUAL_PORT"
+    Info (12134): Parameter "WIDTH_A" = "24"
+    Info (12134): Parameter "WIDTHAD_A" = "11"
+    Info (12134): Parameter "NUMWORDS_A" = "2048"
+    Info (12134): Parameter "WIDTH_B" = "24"
+    Info (12134): Parameter "WIDTHAD_B" = "11"
+    Info (12134): Parameter "NUMWORDS_B" = "2048"
+    Info (12134): Parameter "ADDRESS_ACLR_A" = "NONE"
+    Info (12134): Parameter "OUTDATA_REG_B" = "UNREGISTERED"
+    Info (12134): Parameter "ADDRESS_ACLR_B" = "NONE"
+    Info (12134): Parameter "OUTDATA_ACLR_B" = "NONE"
+    Info (12134): Parameter "ADDRESS_REG_B" = "CLOCK0"
+    Info (12134): Parameter "INDATA_ACLR_A" = "NONE"
+    Info (12134): Parameter "WRCONTROL_ACLR_A" = "NONE"
+    Info (12134): Parameter "READ_DURING_WRITE_MODE_MIXED_PORTS" = "OLD_DATA"
+    Info (12134): Parameter "RDCONTROL_REG_B" = "CLOCK0"
+Info (12021): Found 1 design units, including 1 entities, in source file db/altsyncram_89q1.tdf
+    Info (12023): Found entity 1: altsyncram_89q1 File: C:/code/MiSTer_mp4_player/db/altsyncram_89q1.tdf Line: 28
+Info (12128): Elaborating entity "altsyncram_89q1" for hierarchy "ascal:ascal|altsyncram:i_mem[0].r[7]__1|altsyncram_89q1:auto_generated" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altsyncram.tdf Line: 792
+Info (12128): Elaborating entity "altsyncram" for hierarchy "ascal:ascal|altsyncram:o_line0[0].r[7]__2"
+Info (12130): Elaborated megafunction instantiation "ascal:ascal|altsyncram:o_line0[0].r[7]__2"
+Info (12133): Instantiated megafunction "ascal:ascal|altsyncram:o_line0[0].r[7]__2" with the following parameter:
+    Info (12134): Parameter "OPERATION_MODE" = "DUAL_PORT"
+    Info (12134): Parameter "WIDTH_A" = "24"
+    Info (12134): Parameter "WIDTHAD_A" = "11"
+    Info (12134): Parameter "NUMWORDS_A" = "2048"
+    Info (12134): Parameter "WIDTH_B" = "24"
+    Info (12134): Parameter "WIDTHAD_B" = "11"
+    Info (12134): Parameter "NUMWORDS_B" = "2048"
+    Info (12134): Parameter "ADDRESS_ACLR_A" = "NONE"
+    Info (12134): Parameter "OUTDATA_REG_B" = "UNREGISTERED"
+    Info (12134): Parameter "ADDRESS_ACLR_B" = "NONE"
+    Info (12134): Parameter "OUTDATA_ACLR_B" = "NONE"
+    Info (12134): Parameter "ADDRESS_REG_B" = "CLOCK0"
+    Info (12134): Parameter "INDATA_ACLR_A" = "NONE"
+    Info (12134): Parameter "WRCONTROL_ACLR_A" = "NONE"
+    Info (12134): Parameter "READ_DURING_WRITE_MODE_MIXED_PORTS" = "OLD_DATA"
+Info (12021): Found 1 design units, including 1 entities, in source file db/altsyncram_ccn1.tdf
+    Info (12023): Found entity 1: altsyncram_ccn1 File: C:/code/MiSTer_mp4_player/db/altsyncram_ccn1.tdf Line: 28
+Info (12128): Elaborating entity "altsyncram_ccn1" for hierarchy "ascal:ascal|altsyncram:o_line0[0].r[7]__2|altsyncram_ccn1:auto_generated" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altsyncram.tdf Line: 792
+Info (12128): Elaborating entity "sys_umuldiv" for hierarchy "sys_umuldiv:ar_muldiv" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1073
+Info (12128): Elaborating entity "sys_umul" for hierarchy "sys_umuldiv:ar_muldiv|sys_umul:umul" File: C:/code/MiSTer_mp4_player/sys/math.sv Line: 105
+Info (12128): Elaborating entity "sys_udiv" for hierarchy "sys_umuldiv:ar_muldiv|sys_udiv:udiv" File: C:/code/MiSTer_mp4_player/sys/math.sv Line: 107
+Info (12128): Elaborating entity "pll_hdmi_adj" for hierarchy "pll_hdmi_adj:pll_hdmi_adj" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1198
+Info (12128): Elaborating entity "pll_hdmi" for hierarchy "pll_hdmi:pll_hdmi" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1232
+Info (12128): Elaborating entity "pll_hdmi_0002" for hierarchy "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst" File: C:/code/MiSTer_mp4_player/sys/pll_hdmi.v Line: 23
+Info (12128): Elaborating entity "altera_pll" for hierarchy "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" File: C:/code/MiSTer_mp4_player/sys/pll_hdmi/pll_hdmi_0002.v Line: 239
+Info (10008): Verilog HDL or VHDL information: EDA Netlist Writer cannot regroup multidimensional array "wire_to_nowhere_64" into its bus
+Info (12130): Elaborated megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" File: C:/code/MiSTer_mp4_player/sys/pll_hdmi/pll_hdmi_0002.v Line: 239
+Info (12133): Instantiated megafunction "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" with the following parameter: File: C:/code/MiSTer_mp4_player/sys/pll_hdmi/pll_hdmi_0002.v Line: 239
+    Info (12134): Parameter "fractional_vco_multiplier" = "true"
+    Info (12134): Parameter "reference_clock_frequency" = "50.0 MHz"
+    Info (12134): Parameter "pll_fractional_cout" = "32"
+    Info (12134): Parameter "pll_dsm_out_sel" = "1st_order"
+    Info (12134): Parameter "operation_mode" = "direct"
+    Info (12134): Parameter "number_of_clocks" = "1"
+    Info (12134): Parameter "output_clock_frequency0" = "148.500000 MHz"
+    Info (12134): Parameter "phase_shift0" = "0 ps"
+    Info (12134): Parameter "duty_cycle0" = "50"
+    Info (12134): Parameter "output_clock_frequency1" = "0 MHz"
+    Info (12134): Parameter "phase_shift1" = "0 ps"
+    Info (12134): Parameter "duty_cycle1" = "50"
+    Info (12134): Parameter "output_clock_frequency2" = "0 MHz"
+    Info (12134): Parameter "phase_shift2" = "0 ps"
+    Info (12134): Parameter "duty_cycle2" = "50"
+    Info (12134): Parameter "output_clock_frequency3" = "0 MHz"
+    Info (12134): Parameter "phase_shift3" = "0 ps"
+    Info (12134): Parameter "duty_cycle3" = "50"
+    Info (12134): Parameter "output_clock_frequency4" = "0 MHz"
+    Info (12134): Parameter "phase_shift4" = "0 ps"
+    Info (12134): Parameter "duty_cycle4" = "50"
+    Info (12134): Parameter "output_clock_frequency5" = "0 MHz"
+    Info (12134): Parameter "phase_shift5" = "0 ps"
+    Info (12134): Parameter "duty_cycle5" = "50"
+    Info (12134): Parameter "output_clock_frequency6" = "0 MHz"
+    Info (12134): Parameter "phase_shift6" = "0 ps"
+    Info (12134): Parameter "duty_cycle6" = "50"
+    Info (12134): Parameter "output_clock_frequency7" = "0 MHz"
+    Info (12134): Parameter "phase_shift7" = "0 ps"
+    Info (12134): Parameter "duty_cycle7" = "50"
+    Info (12134): Parameter "output_clock_frequency8" = "0 MHz"
+    Info (12134): Parameter "phase_shift8" = "0 ps"
+    Info (12134): Parameter "duty_cycle8" = "50"
+    Info (12134): Parameter "output_clock_frequency9" = "0 MHz"
+    Info (12134): Parameter "phase_shift9" = "0 ps"
+    Info (12134): Parameter "duty_cycle9" = "50"
+    Info (12134): Parameter "output_clock_frequency10" = "0 MHz"
+    Info (12134): Parameter "phase_shift10" = "0 ps"
+    Info (12134): Parameter "duty_cycle10" = "50"
+    Info (12134): Parameter "output_clock_frequency11" = "0 MHz"
+    Info (12134): Parameter "phase_shift11" = "0 ps"
+    Info (12134): Parameter "duty_cycle11" = "50"
+    Info (12134): Parameter "output_clock_frequency12" = "0 MHz"
+    Info (12134): Parameter "phase_shift12" = "0 ps"
+    Info (12134): Parameter "duty_cycle12" = "50"
+    Info (12134): Parameter "output_clock_frequency13" = "0 MHz"
+    Info (12134): Parameter "phase_shift13" = "0 ps"
+    Info (12134): Parameter "duty_cycle13" = "50"
+    Info (12134): Parameter "output_clock_frequency14" = "0 MHz"
+    Info (12134): Parameter "phase_shift14" = "0 ps"
+    Info (12134): Parameter "duty_cycle14" = "50"
+    Info (12134): Parameter "output_clock_frequency15" = "0 MHz"
+    Info (12134): Parameter "phase_shift15" = "0 ps"
+    Info (12134): Parameter "duty_cycle15" = "50"
+    Info (12134): Parameter "output_clock_frequency16" = "0 MHz"
+    Info (12134): Parameter "phase_shift16" = "0 ps"
+    Info (12134): Parameter "duty_cycle16" = "50"
+    Info (12134): Parameter "output_clock_frequency17" = "0 MHz"
+    Info (12134): Parameter "phase_shift17" = "0 ps"
+    Info (12134): Parameter "duty_cycle17" = "50"
+    Info (12134): Parameter "pll_type" = "Cyclone V"
+    Info (12134): Parameter "pll_subtype" = "Reconfigurable"
+    Info (12134): Parameter "m_cnt_hi_div" = "4"
+    Info (12134): Parameter "m_cnt_lo_div" = "4"
+    Info (12134): Parameter "n_cnt_hi_div" = "256"
+    Info (12134): Parameter "n_cnt_lo_div" = "256"
+    Info (12134): Parameter "m_cnt_bypass_en" = "false"
+    Info (12134): Parameter "n_cnt_bypass_en" = "true"
+    Info (12134): Parameter "m_cnt_odd_div_duty_en" = "false"
+    Info (12134): Parameter "n_cnt_odd_div_duty_en" = "false"
+    Info (12134): Parameter "c_cnt_hi_div0" = "2"
+    Info (12134): Parameter "c_cnt_lo_div0" = "1"
+    Info (12134): Parameter "c_cnt_prst0" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst0" = "0"
+    Info (12134): Parameter "c_cnt_in_src0" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en0" = "false"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en0" = "true"
+    Info (12134): Parameter "c_cnt_hi_div1" = "1"
+    Info (12134): Parameter "c_cnt_lo_div1" = "1"
+    Info (12134): Parameter "c_cnt_prst1" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst1" = "0"
+    Info (12134): Parameter "c_cnt_in_src1" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en1" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en1" = "false"
+    Info (12134): Parameter "c_cnt_hi_div2" = "1"
+    Info (12134): Parameter "c_cnt_lo_div2" = "1"
+    Info (12134): Parameter "c_cnt_prst2" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst2" = "0"
+    Info (12134): Parameter "c_cnt_in_src2" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en2" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en2" = "false"
+    Info (12134): Parameter "c_cnt_hi_div3" = "1"
+    Info (12134): Parameter "c_cnt_lo_div3" = "1"
+    Info (12134): Parameter "c_cnt_prst3" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst3" = "0"
+    Info (12134): Parameter "c_cnt_in_src3" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en3" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en3" = "false"
+    Info (12134): Parameter "c_cnt_hi_div4" = "1"
+    Info (12134): Parameter "c_cnt_lo_div4" = "1"
+    Info (12134): Parameter "c_cnt_prst4" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst4" = "0"
+    Info (12134): Parameter "c_cnt_in_src4" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en4" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en4" = "false"
+    Info (12134): Parameter "c_cnt_hi_div5" = "1"
+    Info (12134): Parameter "c_cnt_lo_div5" = "1"
+    Info (12134): Parameter "c_cnt_prst5" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst5" = "0"
+    Info (12134): Parameter "c_cnt_in_src5" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en5" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en5" = "false"
+    Info (12134): Parameter "c_cnt_hi_div6" = "1"
+    Info (12134): Parameter "c_cnt_lo_div6" = "1"
+    Info (12134): Parameter "c_cnt_prst6" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst6" = "0"
+    Info (12134): Parameter "c_cnt_in_src6" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en6" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en6" = "false"
+    Info (12134): Parameter "c_cnt_hi_div7" = "1"
+    Info (12134): Parameter "c_cnt_lo_div7" = "1"
+    Info (12134): Parameter "c_cnt_prst7" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst7" = "0"
+    Info (12134): Parameter "c_cnt_in_src7" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en7" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en7" = "false"
+    Info (12134): Parameter "c_cnt_hi_div8" = "1"
+    Info (12134): Parameter "c_cnt_lo_div8" = "1"
+    Info (12134): Parameter "c_cnt_prst8" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst8" = "0"
+    Info (12134): Parameter "c_cnt_in_src8" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en8" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en8" = "false"
+    Info (12134): Parameter "c_cnt_hi_div9" = "1"
+    Info (12134): Parameter "c_cnt_lo_div9" = "1"
+    Info (12134): Parameter "c_cnt_prst9" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst9" = "0"
+    Info (12134): Parameter "c_cnt_in_src9" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en9" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en9" = "false"
+    Info (12134): Parameter "c_cnt_hi_div10" = "1"
+    Info (12134): Parameter "c_cnt_lo_div10" = "1"
+    Info (12134): Parameter "c_cnt_prst10" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst10" = "0"
+    Info (12134): Parameter "c_cnt_in_src10" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en10" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en10" = "false"
+    Info (12134): Parameter "c_cnt_hi_div11" = "1"
+    Info (12134): Parameter "c_cnt_lo_div11" = "1"
+    Info (12134): Parameter "c_cnt_prst11" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst11" = "0"
+    Info (12134): Parameter "c_cnt_in_src11" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en11" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en11" = "false"
+    Info (12134): Parameter "c_cnt_hi_div12" = "1"
+    Info (12134): Parameter "c_cnt_lo_div12" = "1"
+    Info (12134): Parameter "c_cnt_prst12" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst12" = "0"
+    Info (12134): Parameter "c_cnt_in_src12" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en12" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en12" = "false"
+    Info (12134): Parameter "c_cnt_hi_div13" = "1"
+    Info (12134): Parameter "c_cnt_lo_div13" = "1"
+    Info (12134): Parameter "c_cnt_prst13" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst13" = "0"
+    Info (12134): Parameter "c_cnt_in_src13" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en13" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en13" = "false"
+    Info (12134): Parameter "c_cnt_hi_div14" = "1"
+    Info (12134): Parameter "c_cnt_lo_div14" = "1"
+    Info (12134): Parameter "c_cnt_prst14" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst14" = "0"
+    Info (12134): Parameter "c_cnt_in_src14" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en14" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en14" = "false"
+    Info (12134): Parameter "c_cnt_hi_div15" = "1"
+    Info (12134): Parameter "c_cnt_lo_div15" = "1"
+    Info (12134): Parameter "c_cnt_prst15" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst15" = "0"
+    Info (12134): Parameter "c_cnt_in_src15" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en15" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en15" = "false"
+    Info (12134): Parameter "c_cnt_hi_div16" = "1"
+    Info (12134): Parameter "c_cnt_lo_div16" = "1"
+    Info (12134): Parameter "c_cnt_prst16" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst16" = "0"
+    Info (12134): Parameter "c_cnt_in_src16" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en16" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en16" = "false"
+    Info (12134): Parameter "c_cnt_hi_div17" = "1"
+    Info (12134): Parameter "c_cnt_lo_div17" = "1"
+    Info (12134): Parameter "c_cnt_prst17" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst17" = "0"
+    Info (12134): Parameter "c_cnt_in_src17" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en17" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en17" = "false"
+    Info (12134): Parameter "pll_vco_div" = "2"
+    Info (12134): Parameter "pll_cp_current" = "20"
+    Info (12134): Parameter "pll_bwctrl" = "4000"
+    Info (12134): Parameter "pll_output_clk_frequency" = "445.499999 MHz"
+    Info (12134): Parameter "pll_fractional_division" = "3908420153"
+    Info (12134): Parameter "mimic_fbclk_type" = "none"
+    Info (12134): Parameter "pll_fbclk_mux_1" = "glb"
+    Info (12134): Parameter "pll_fbclk_mux_2" = "m_cnt"
+    Info (12134): Parameter "pll_m_cnt_in_src" = "ph_mux_clk"
+    Info (12134): Parameter "pll_slf_rst" = "true"
+Info (12128): Elaborating entity "dps_extra_kick" for hierarchy "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|dps_extra_kick:dps_extra_inst" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 769
+Info (12131): Elaborated megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|dps_extra_kick:dps_extra_inst", which is child of megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 769
+Info (12128): Elaborating entity "dprio_init" for hierarchy "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|dprio_init:dprio_init_inst" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 784
+Info (12131): Elaborated megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|dprio_init:dprio_init_inst", which is child of megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 784
+Info (12128): Elaborating entity "altera_pll_dps_lcell_comb" for hierarchy "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_0" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 1961
+Info (12131): Elaborated megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_0", which is child of megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 1961
+Info (12128): Elaborating entity "altera_pll_dps_lcell_comb" for hierarchy "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_1" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 1972
+Info (12131): Elaborated megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_1", which is child of megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 1972
+Info (12128): Elaborating entity "altera_pll_dps_lcell_comb" for hierarchy "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_2" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 1983
+Info (12131): Elaborated megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_2", which is child of megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 1983
+Info (12128): Elaborating entity "altera_pll_dps_lcell_comb" for hierarchy "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_3" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 1994
+Info (12131): Elaborated megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_3", which is child of megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 1994
+Info (12128): Elaborating entity "altera_pll_dps_lcell_comb" for hierarchy "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_4" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 2005
+Info (12131): Elaborated megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i|altera_pll_dps_lcell_comb:lcell_cntsel_int_4", which is child of megafunction instantiation "pll_hdmi:pll_hdmi|pll_hdmi_0002:pll_hdmi_inst|altera_pll:altera_pll_i" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altera_pll.v Line: 2005
+Info (12128): Elaborating entity "pll_cfg_hdmi" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1267
+Info (12128): Elaborating entity "altera_std_synchronizer" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|altera_std_synchronizer:altera_std_synchronizer_inst" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg_hdmi.v Line: 271
+Info (12130): Elaborated megafunction instantiation "pll_cfg_hdmi:pll_cfg_hdmi|altera_std_synchronizer:altera_std_synchronizer_inst" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg_hdmi.v Line: 271
+Info (12133): Instantiated megafunction "pll_cfg_hdmi:pll_cfg_hdmi|altera_std_synchronizer:altera_std_synchronizer_inst" with the following parameter: File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg_hdmi.v Line: 271
+    Info (12134): Parameter "depth" = "3"
+Info (12128): Elaborating entity "dyn_phase_shift" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|dyn_phase_shift:dyn_phase_shift_inst" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg_hdmi.v Line: 1169
+Info (12128): Elaborating entity "generic_lcell_comb" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|dyn_phase_shift:dyn_phase_shift_inst|generic_lcell_comb:lcell_cnt_sel_0" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/altera_pll_reconfig_core.v Line: 2060
+Info (12128): Elaborating entity "generic_lcell_comb" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|dyn_phase_shift:dyn_phase_shift_inst|generic_lcell_comb:lcell_cnt_sel_1" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/altera_pll_reconfig_core.v Line: 2071
+Info (12128): Elaborating entity "generic_lcell_comb" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|dyn_phase_shift:dyn_phase_shift_inst|generic_lcell_comb:lcell_cnt_sel_2" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/altera_pll_reconfig_core.v Line: 2082
+Info (12128): Elaborating entity "generic_lcell_comb" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|dyn_phase_shift:dyn_phase_shift_inst|generic_lcell_comb:lcell_cnt_sel_3" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/altera_pll_reconfig_core.v Line: 2093
+Info (12128): Elaborating entity "generic_lcell_comb" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|dyn_phase_shift:dyn_phase_shift_inst|generic_lcell_comb:lcell_cnt_sel_4" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/altera_pll_reconfig_core.v Line: 2104
+Info (12128): Elaborating entity "self_reset" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|self_reset:self_reset_inst" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg_hdmi.v Line: 1173
+Info (12128): Elaborating entity "dprio_mux" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|dprio_mux:dprio_mux_inst" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg_hdmi.v Line: 1211
+Info (12128): Elaborating entity "fpll_dprio_init" for hierarchy "pll_cfg_hdmi:pll_cfg_hdmi|fpll_dprio_init:fpll_dprio_init_inst" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg_hdmi.v Line: 1230
+Info (12128): Elaborating entity "shadowmask" for hierarchy "shadowmask:HDMI_shadowmask" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1361
+Info (12128): Elaborating entity "osd" for hierarchy "osd:hdmi_osd" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1384
+Info (12128): Elaborating entity "csync" for hierarchy "csync:csync_hdmi" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1387
+Info (12128): Elaborating entity "altddio_out" for hierarchy "altddio_out:hdmiclk_ddr" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1480
+Info (12130): Elaborated megafunction instantiation "altddio_out:hdmiclk_ddr" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1480
+Info (12133): Instantiated megafunction "altddio_out:hdmiclk_ddr" with the following parameter: File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1480
+    Info (12134): Parameter "extend_oe_disable" = "OFF"
+    Info (12134): Parameter "intended_device_family" = "Cyclone V"
+    Info (12134): Parameter "invert_output" = "OFF"
+    Info (12134): Parameter "lpm_hint" = "UNUSED"
+    Info (12134): Parameter "lpm_type" = "altddio_out"
+    Info (12134): Parameter "oe_reg" = "UNREGISTERED"
+    Info (12134): Parameter "power_up_high" = "OFF"
+    Info (12134): Parameter "width" = "1"
+Info (12021): Found 1 design units, including 1 entities, in source file db/ddio_out_b2j.tdf
+    Info (12023): Found entity 1: ddio_out_b2j File: C:/code/MiSTer_mp4_player/db/ddio_out_b2j.tdf Line: 28
+Info (12128): Elaborating entity "ddio_out_b2j" for hierarchy "altddio_out:hdmiclk_ddr|ddio_out_b2j:auto_generated" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altddio_out.tdf Line: 101
+Info (12128): Elaborating entity "altddio_out" for hierarchy "altddio_out:vgaclk_ddr" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1561
+Info (12130): Elaborated megafunction instantiation "altddio_out:vgaclk_ddr" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1561
+Info (12133): Instantiated megafunction "altddio_out:vgaclk_ddr" with the following parameter: File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1561
+    Info (12134): Parameter "extend_oe_disable" = "OFF"
+    Info (12134): Parameter "intended_device_family" = "Cyclone V"
+    Info (12134): Parameter "invert_output" = "OFF"
+    Info (12134): Parameter "lpm_hint" = "UNUSED"
+    Info (12134): Parameter "lpm_type" = "altddio_out"
+    Info (12134): Parameter "oe_reg" = "UNREGISTERED"
+    Info (12134): Parameter "power_up_high" = "OFF"
+    Info (12134): Parameter "width" = "1"
+Info (12021): Found 1 design units, including 1 entities, in source file db/ddio_out_1oj.tdf
+    Info (12023): Found entity 1: ddio_out_1oj File: C:/code/MiSTer_mp4_player/db/ddio_out_1oj.tdf Line: 30
+Info (12128): Elaborating entity "ddio_out_1oj" for hierarchy "altddio_out:vgaclk_ddr|ddio_out_1oj:auto_generated" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/altddio_out.tdf Line: 101
+Info (12128): Elaborating entity "scanlines" for hierarchy "scanlines:VGA_scanlines" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1607
+Info (12128): Elaborating entity "yc_out" for hierarchy "yc_out:yc_out" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1662
+Info (12128): Elaborating entity "vga_out" for hierarchy "vga_out:vga_scaler_out" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1684
+Info (12128): Elaborating entity "vga_pwm" for hierarchy "vga_pwm:vga_pwm" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1717
+Info (12128): Elaborating entity "pll_audio" for hierarchy "pll_audio:pll_audio" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1786
+Info (12128): Elaborating entity "pll_audio_0002" for hierarchy "pll_audio:pll_audio|pll_audio_0002:pll_audio_inst" File: C:/code/MiSTer_mp4_player/sys/pll_audio.v Line: 19
+Info (12128): Elaborating entity "altera_pll" for hierarchy "pll_audio:pll_audio|pll_audio_0002:pll_audio_inst|altera_pll:altera_pll_i" File: C:/code/MiSTer_mp4_player/sys/pll_audio/pll_audio_0002.v Line: 85
+Info (10008): Verilog HDL or VHDL information: EDA Netlist Writer cannot regroup multidimensional array "wire_to_nowhere_64" into its bus
+Info (12130): Elaborated megafunction instantiation "pll_audio:pll_audio|pll_audio_0002:pll_audio_inst|altera_pll:altera_pll_i" File: C:/code/MiSTer_mp4_player/sys/pll_audio/pll_audio_0002.v Line: 85
+Info (12133): Instantiated megafunction "pll_audio:pll_audio|pll_audio_0002:pll_audio_inst|altera_pll:altera_pll_i" with the following parameter: File: C:/code/MiSTer_mp4_player/sys/pll_audio/pll_audio_0002.v Line: 85
+    Info (12134): Parameter "fractional_vco_multiplier" = "true"
+    Info (12134): Parameter "reference_clock_frequency" = "50.0 MHz"
+    Info (12134): Parameter "operation_mode" = "direct"
+    Info (12134): Parameter "number_of_clocks" = "1"
+    Info (12134): Parameter "output_clock_frequency0" = "24.576000 MHz"
+    Info (12134): Parameter "phase_shift0" = "0 ps"
+    Info (12134): Parameter "duty_cycle0" = "50"
+    Info (12134): Parameter "output_clock_frequency1" = "0 MHz"
+    Info (12134): Parameter "phase_shift1" = "0 ps"
+    Info (12134): Parameter "duty_cycle1" = "50"
+    Info (12134): Parameter "output_clock_frequency2" = "0 MHz"
+    Info (12134): Parameter "phase_shift2" = "0 ps"
+    Info (12134): Parameter "duty_cycle2" = "50"
+    Info (12134): Parameter "output_clock_frequency3" = "0 MHz"
+    Info (12134): Parameter "phase_shift3" = "0 ps"
+    Info (12134): Parameter "duty_cycle3" = "50"
+    Info (12134): Parameter "output_clock_frequency4" = "0 MHz"
+    Info (12134): Parameter "phase_shift4" = "0 ps"
+    Info (12134): Parameter "duty_cycle4" = "50"
+    Info (12134): Parameter "output_clock_frequency5" = "0 MHz"
+    Info (12134): Parameter "phase_shift5" = "0 ps"
+    Info (12134): Parameter "duty_cycle5" = "50"
+    Info (12134): Parameter "output_clock_frequency6" = "0 MHz"
+    Info (12134): Parameter "phase_shift6" = "0 ps"
+    Info (12134): Parameter "duty_cycle6" = "50"
+    Info (12134): Parameter "output_clock_frequency7" = "0 MHz"
+    Info (12134): Parameter "phase_shift7" = "0 ps"
+    Info (12134): Parameter "duty_cycle7" = "50"
+    Info (12134): Parameter "output_clock_frequency8" = "0 MHz"
+    Info (12134): Parameter "phase_shift8" = "0 ps"
+    Info (12134): Parameter "duty_cycle8" = "50"
+    Info (12134): Parameter "output_clock_frequency9" = "0 MHz"
+    Info (12134): Parameter "phase_shift9" = "0 ps"
+    Info (12134): Parameter "duty_cycle9" = "50"
+    Info (12134): Parameter "output_clock_frequency10" = "0 MHz"
+    Info (12134): Parameter "phase_shift10" = "0 ps"
+    Info (12134): Parameter "duty_cycle10" = "50"
+    Info (12134): Parameter "output_clock_frequency11" = "0 MHz"
+    Info (12134): Parameter "phase_shift11" = "0 ps"
+    Info (12134): Parameter "duty_cycle11" = "50"
+    Info (12134): Parameter "output_clock_frequency12" = "0 MHz"
+    Info (12134): Parameter "phase_shift12" = "0 ps"
+    Info (12134): Parameter "duty_cycle12" = "50"
+    Info (12134): Parameter "output_clock_frequency13" = "0 MHz"
+    Info (12134): Parameter "phase_shift13" = "0 ps"
+    Info (12134): Parameter "duty_cycle13" = "50"
+    Info (12134): Parameter "output_clock_frequency14" = "0 MHz"
+    Info (12134): Parameter "phase_shift14" = "0 ps"
+    Info (12134): Parameter "duty_cycle14" = "50"
+    Info (12134): Parameter "output_clock_frequency15" = "0 MHz"
+    Info (12134): Parameter "phase_shift15" = "0 ps"
+    Info (12134): Parameter "duty_cycle15" = "50"
+    Info (12134): Parameter "output_clock_frequency16" = "0 MHz"
+    Info (12134): Parameter "phase_shift16" = "0 ps"
+    Info (12134): Parameter "duty_cycle16" = "50"
+    Info (12134): Parameter "output_clock_frequency17" = "0 MHz"
+    Info (12134): Parameter "phase_shift17" = "0 ps"
+    Info (12134): Parameter "duty_cycle17" = "50"
+    Info (12134): Parameter "pll_type" = "General"
+    Info (12134): Parameter "pll_subtype" = "General"
+Info (12128): Elaborating entity "audio_out" for hierarchy "audio_out:audio_out" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1824
+Info (12128): Elaborating entity "i2s" for hierarchy "audio_out:audio_out|i2s:i2s" File: C:/code/MiSTer_mp4_player/sys/audio_out.v Line: 88
+Info (12128): Elaborating entity "spdif" for hierarchy "audio_out:audio_out|spdif:toslink" File: C:/code/MiSTer_mp4_player/sys/audio_out.v Line: 99
+Info (12128): Elaborating entity "sigma_delta_dac" for hierarchy "audio_out:audio_out|sigma_delta_dac:sd_l" File: C:/code/MiSTer_mp4_player/sys/audio_out.v Line: 107
+Info (12128): Elaborating entity "IIR_filter" for hierarchy "audio_out:audio_out|IIR_filter:IIR_filter" File: C:/code/MiSTer_mp4_player/sys/audio_out.v Line: 200
+Info (12128): Elaborating entity "iir_filter_tap" for hierarchy "audio_out:audio_out|IIR_filter:IIR_filter|iir_filter_tap:iir_tap_0" File: C:/code/MiSTer_mp4_player/sys/iir_filter.v Line: 82
+Info (12128): Elaborating entity "DC_blocker" for hierarchy "audio_out:audio_out|DC_blocker:dcb_l" File: C:/code/MiSTer_mp4_player/sys/audio_out.v Line: 211
+Info (12128): Elaborating entity "aud_mix_top" for hierarchy "audio_out:audio_out|aud_mix_top:audmix_l" File: C:/code/MiSTer_mp4_player/sys/audio_out.v Line: 238
+Info (12128): Elaborating entity "alsa" for hierarchy "alsa:alsa" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1864
+Info (12128): Elaborating entity "sync_fix" for hierarchy "sync_fix:sync_v" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 1929
+Info (12128): Elaborating entity "emu" for hierarchy "emu:emu" File: C:/code/MiSTer_mp4_player/sys/sys_top.v Line: 2117
+Warning (10230): Verilog HDL assignment warning at Groovy.sv(1078): truncated value with size 28 to match size of target (8) File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 1078
+Info (10264): Verilog HDL Case Statement information at Groovy.sv(625): all case item expressions in this case statement are onehot File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 625
+Warning (10230): Verilog HDL assignment warning at Groovy.sv(1275): truncated value with size 24 to match size of target (8) File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 1275
+Warning (10230): Verilog HDL assignment warning at Groovy.sv(1417): truncated value with size 32 to match size of target (8) File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 1417
+Warning (10230): Verilog HDL assignment warning at Groovy.sv(1418): truncated value with size 32 to match size of target (28) File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 1418
+Warning (10230): Verilog HDL assignment warning at Groovy.sv(1533): truncated value with size 28 to match size of target (8) File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 1533
+Info (12128): Elaborating entity "hps_io" for hierarchy "emu:emu|hps_io:hps_io" File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 349
+Info (10264): Verilog HDL Case Statement information at hps_io.sv(420): all case item expressions in this case statement are onehot File: C:/code/MiSTer_mp4_player/sys/hps_io.sv Line: 420
+Info (10264): Verilog HDL Case Statement information at hps_io.sv(449): all case item expressions in this case statement are onehot File: C:/code/MiSTer_mp4_player/sys/hps_io.sv Line: 449
+Info (12128): Elaborating entity "video_calc" for hierarchy "emu:emu|hps_io:hps_io|video_calc:video_calc" File: C:/code/MiSTer_mp4_player/sys/hps_io.sv Line: 231
+Info (12128): Elaborating entity "confstr_rom" for hierarchy "emu:emu|hps_io:hps_io|confstr_rom:confstr_rom" File: C:/code/MiSTer_mp4_player/sys/hps_io.sv Line: 241
+Info (12128): Elaborating entity "hps_ext" for hierarchy "emu:emu|hps_ext:hps_ext" File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 458
+Info (10264): Verilog HDL Case Statement information at hps_ext.v(233): all case item expressions in this case statement are onehot File: C:/code/MiSTer_mp4_player/rtl/hps_ext.v Line: 233
+Info (10264): Verilog HDL Case Statement information at hps_ext.v(259): all case item expressions in this case statement are onehot File: C:/code/MiSTer_mp4_player/rtl/hps_ext.v Line: 259
+Info (12128): Elaborating entity "pll" for hierarchy "emu:emu|pll:pll" File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 472
+Info (12128): Elaborating entity "pll_0002" for hierarchy "emu:emu|pll:pll|pll_0002:pll_inst" File: C:/code/MiSTer_mp4_player/rtl/pll.v Line: 24
+Info (12128): Elaborating entity "altera_pll" for hierarchy "emu:emu|pll:pll|pll_0002:pll_inst|altera_pll:altera_pll_i" File: C:/code/MiSTer_mp4_player/rtl/pll/pll_0002.v Line: 239
+Info (10008): Verilog HDL or VHDL information: EDA Netlist Writer cannot regroup multidimensional array "wire_to_nowhere_64" into its bus
+Info (12130): Elaborated megafunction instantiation "emu:emu|pll:pll|pll_0002:pll_inst|altera_pll:altera_pll_i" File: C:/code/MiSTer_mp4_player/rtl/pll/pll_0002.v Line: 239
+Info (12133): Instantiated megafunction "emu:emu|pll:pll|pll_0002:pll_inst|altera_pll:altera_pll_i" with the following parameter: File: C:/code/MiSTer_mp4_player/rtl/pll/pll_0002.v Line: 239
+    Info (12134): Parameter "fractional_vco_multiplier" = "true"
+    Info (12134): Parameter "reference_clock_frequency" = "50.0 MHz"
+    Info (12134): Parameter "pll_fractional_cout" = "32"
+    Info (12134): Parameter "pll_dsm_out_sel" = "1st_order"
+    Info (12134): Parameter "operation_mode" = "direct"
+    Info (12134): Parameter "number_of_clocks" = "1"
+    Info (12134): Parameter "output_clock_frequency0" = "82.753648 MHz"
+    Info (12134): Parameter "phase_shift0" = "0 ps"
+    Info (12134): Parameter "duty_cycle0" = "50"
+    Info (12134): Parameter "output_clock_frequency1" = "0 MHz"
+    Info (12134): Parameter "phase_shift1" = "0 ps"
+    Info (12134): Parameter "duty_cycle1" = "50"
+    Info (12134): Parameter "output_clock_frequency2" = "0 MHz"
+    Info (12134): Parameter "phase_shift2" = "0 ps"
+    Info (12134): Parameter "duty_cycle2" = "50"
+    Info (12134): Parameter "output_clock_frequency3" = "0 MHz"
+    Info (12134): Parameter "phase_shift3" = "0 ps"
+    Info (12134): Parameter "duty_cycle3" = "50"
+    Info (12134): Parameter "output_clock_frequency4" = "0 MHz"
+    Info (12134): Parameter "phase_shift4" = "0 ps"
+    Info (12134): Parameter "duty_cycle4" = "50"
+    Info (12134): Parameter "output_clock_frequency5" = "0 MHz"
+    Info (12134): Parameter "phase_shift5" = "0 ps"
+    Info (12134): Parameter "duty_cycle5" = "50"
+    Info (12134): Parameter "output_clock_frequency6" = "0 MHz"
+    Info (12134): Parameter "phase_shift6" = "0 ps"
+    Info (12134): Parameter "duty_cycle6" = "50"
+    Info (12134): Parameter "output_clock_frequency7" = "0 MHz"
+    Info (12134): Parameter "phase_shift7" = "0 ps"
+    Info (12134): Parameter "duty_cycle7" = "50"
+    Info (12134): Parameter "output_clock_frequency8" = "0 MHz"
+    Info (12134): Parameter "phase_shift8" = "0 ps"
+    Info (12134): Parameter "duty_cycle8" = "50"
+    Info (12134): Parameter "output_clock_frequency9" = "0 MHz"
+    Info (12134): Parameter "phase_shift9" = "0 ps"
+    Info (12134): Parameter "duty_cycle9" = "50"
+    Info (12134): Parameter "output_clock_frequency10" = "0 MHz"
+    Info (12134): Parameter "phase_shift10" = "0 ps"
+    Info (12134): Parameter "duty_cycle10" = "50"
+    Info (12134): Parameter "output_clock_frequency11" = "0 MHz"
+    Info (12134): Parameter "phase_shift11" = "0 ps"
+    Info (12134): Parameter "duty_cycle11" = "50"
+    Info (12134): Parameter "output_clock_frequency12" = "0 MHz"
+    Info (12134): Parameter "phase_shift12" = "0 ps"
+    Info (12134): Parameter "duty_cycle12" = "50"
+    Info (12134): Parameter "output_clock_frequency13" = "0 MHz"
+    Info (12134): Parameter "phase_shift13" = "0 ps"
+    Info (12134): Parameter "duty_cycle13" = "50"
+    Info (12134): Parameter "output_clock_frequency14" = "0 MHz"
+    Info (12134): Parameter "phase_shift14" = "0 ps"
+    Info (12134): Parameter "duty_cycle14" = "50"
+    Info (12134): Parameter "output_clock_frequency15" = "0 MHz"
+    Info (12134): Parameter "phase_shift15" = "0 ps"
+    Info (12134): Parameter "duty_cycle15" = "50"
+    Info (12134): Parameter "output_clock_frequency16" = "0 MHz"
+    Info (12134): Parameter "phase_shift16" = "0 ps"
+    Info (12134): Parameter "duty_cycle16" = "50"
+    Info (12134): Parameter "output_clock_frequency17" = "0 MHz"
+    Info (12134): Parameter "phase_shift17" = "0 ps"
+    Info (12134): Parameter "duty_cycle17" = "50"
+    Info (12134): Parameter "pll_type" = "Cyclone V"
+    Info (12134): Parameter "pll_subtype" = "Reconfigurable"
+    Info (12134): Parameter "m_cnt_hi_div" = "4"
+    Info (12134): Parameter "m_cnt_lo_div" = "4"
+    Info (12134): Parameter "n_cnt_hi_div" = "256"
+    Info (12134): Parameter "n_cnt_lo_div" = "256"
+    Info (12134): Parameter "m_cnt_bypass_en" = "false"
+    Info (12134): Parameter "n_cnt_bypass_en" = "true"
+    Info (12134): Parameter "m_cnt_odd_div_duty_en" = "false"
+    Info (12134): Parameter "n_cnt_odd_div_duty_en" = "false"
+    Info (12134): Parameter "c_cnt_hi_div0" = "3"
+    Info (12134): Parameter "c_cnt_lo_div0" = "2"
+    Info (12134): Parameter "c_cnt_prst0" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst0" = "0"
+    Info (12134): Parameter "c_cnt_in_src0" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en0" = "false"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en0" = "true"
+    Info (12134): Parameter "c_cnt_hi_div1" = "1"
+    Info (12134): Parameter "c_cnt_lo_div1" = "1"
+    Info (12134): Parameter "c_cnt_prst1" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst1" = "0"
+    Info (12134): Parameter "c_cnt_in_src1" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en1" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en1" = "false"
+    Info (12134): Parameter "c_cnt_hi_div2" = "1"
+    Info (12134): Parameter "c_cnt_lo_div2" = "1"
+    Info (12134): Parameter "c_cnt_prst2" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst2" = "0"
+    Info (12134): Parameter "c_cnt_in_src2" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en2" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en2" = "false"
+    Info (12134): Parameter "c_cnt_hi_div3" = "1"
+    Info (12134): Parameter "c_cnt_lo_div3" = "1"
+    Info (12134): Parameter "c_cnt_prst3" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst3" = "0"
+    Info (12134): Parameter "c_cnt_in_src3" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en3" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en3" = "false"
+    Info (12134): Parameter "c_cnt_hi_div4" = "1"
+    Info (12134): Parameter "c_cnt_lo_div4" = "1"
+    Info (12134): Parameter "c_cnt_prst4" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst4" = "0"
+    Info (12134): Parameter "c_cnt_in_src4" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en4" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en4" = "false"
+    Info (12134): Parameter "c_cnt_hi_div5" = "1"
+    Info (12134): Parameter "c_cnt_lo_div5" = "1"
+    Info (12134): Parameter "c_cnt_prst5" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst5" = "0"
+    Info (12134): Parameter "c_cnt_in_src5" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en5" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en5" = "false"
+    Info (12134): Parameter "c_cnt_hi_div6" = "1"
+    Info (12134): Parameter "c_cnt_lo_div6" = "1"
+    Info (12134): Parameter "c_cnt_prst6" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst6" = "0"
+    Info (12134): Parameter "c_cnt_in_src6" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en6" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en6" = "false"
+    Info (12134): Parameter "c_cnt_hi_div7" = "1"
+    Info (12134): Parameter "c_cnt_lo_div7" = "1"
+    Info (12134): Parameter "c_cnt_prst7" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst7" = "0"
+    Info (12134): Parameter "c_cnt_in_src7" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en7" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en7" = "false"
+    Info (12134): Parameter "c_cnt_hi_div8" = "1"
+    Info (12134): Parameter "c_cnt_lo_div8" = "1"
+    Info (12134): Parameter "c_cnt_prst8" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst8" = "0"
+    Info (12134): Parameter "c_cnt_in_src8" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en8" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en8" = "false"
+    Info (12134): Parameter "c_cnt_hi_div9" = "1"
+    Info (12134): Parameter "c_cnt_lo_div9" = "1"
+    Info (12134): Parameter "c_cnt_prst9" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst9" = "0"
+    Info (12134): Parameter "c_cnt_in_src9" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en9" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en9" = "false"
+    Info (12134): Parameter "c_cnt_hi_div10" = "1"
+    Info (12134): Parameter "c_cnt_lo_div10" = "1"
+    Info (12134): Parameter "c_cnt_prst10" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst10" = "0"
+    Info (12134): Parameter "c_cnt_in_src10" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en10" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en10" = "false"
+    Info (12134): Parameter "c_cnt_hi_div11" = "1"
+    Info (12134): Parameter "c_cnt_lo_div11" = "1"
+    Info (12134): Parameter "c_cnt_prst11" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst11" = "0"
+    Info (12134): Parameter "c_cnt_in_src11" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en11" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en11" = "false"
+    Info (12134): Parameter "c_cnt_hi_div12" = "1"
+    Info (12134): Parameter "c_cnt_lo_div12" = "1"
+    Info (12134): Parameter "c_cnt_prst12" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst12" = "0"
+    Info (12134): Parameter "c_cnt_in_src12" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en12" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en12" = "false"
+    Info (12134): Parameter "c_cnt_hi_div13" = "1"
+    Info (12134): Parameter "c_cnt_lo_div13" = "1"
+    Info (12134): Parameter "c_cnt_prst13" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst13" = "0"
+    Info (12134): Parameter "c_cnt_in_src13" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en13" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en13" = "false"
+    Info (12134): Parameter "c_cnt_hi_div14" = "1"
+    Info (12134): Parameter "c_cnt_lo_div14" = "1"
+    Info (12134): Parameter "c_cnt_prst14" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst14" = "0"
+    Info (12134): Parameter "c_cnt_in_src14" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en14" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en14" = "false"
+    Info (12134): Parameter "c_cnt_hi_div15" = "1"
+    Info (12134): Parameter "c_cnt_lo_div15" = "1"
+    Info (12134): Parameter "c_cnt_prst15" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst15" = "0"
+    Info (12134): Parameter "c_cnt_in_src15" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en15" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en15" = "false"
+    Info (12134): Parameter "c_cnt_hi_div16" = "1"
+    Info (12134): Parameter "c_cnt_lo_div16" = "1"
+    Info (12134): Parameter "c_cnt_prst16" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst16" = "0"
+    Info (12134): Parameter "c_cnt_in_src16" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en16" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en16" = "false"
+    Info (12134): Parameter "c_cnt_hi_div17" = "1"
+    Info (12134): Parameter "c_cnt_lo_div17" = "1"
+    Info (12134): Parameter "c_cnt_prst17" = "1"
+    Info (12134): Parameter "c_cnt_ph_mux_prst17" = "0"
+    Info (12134): Parameter "c_cnt_in_src17" = "ph_mux_clk"
+    Info (12134): Parameter "c_cnt_bypass_en17" = "true"
+    Info (12134): Parameter "c_cnt_odd_div_duty_en17" = "false"
+    Info (12134): Parameter "pll_vco_div" = "2"
+    Info (12134): Parameter "pll_cp_current" = "20"
+    Info (12134): Parameter "pll_bwctrl" = "4000"
+    Info (12134): Parameter "pll_output_clk_frequency" = "413.768239 MHz"
+    Info (12134): Parameter "pll_fractional_division" = "1182682725"
+    Info (12134): Parameter "mimic_fbclk_type" = "none"
+    Info (12134): Parameter "pll_fbclk_mux_1" = "glb"
+    Info (12134): Parameter "pll_fbclk_mux_2" = "m_cnt"
+    Info (12134): Parameter "pll_m_cnt_in_src" = "ph_mux_clk"
+    Info (12134): Parameter "pll_slf_rst" = "true"
+Info (12128): Elaborating entity "pll_cfg" for hierarchy "emu:emu|pll_cfg:pll_cfg" File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 493
+Info (12128): Elaborating entity "altera_pll_reconfig_top" for hierarchy "emu:emu|pll_cfg:pll_cfg|altera_pll_reconfig_top:pll_cfg_inst" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/pll_cfg.v Line: 50
+Info (12128): Elaborating entity "altera_pll_reconfig_core" for hierarchy "emu:emu|pll_cfg:pll_cfg|altera_pll_reconfig_top:pll_cfg_inst|altera_pll_reconfig_core:NM28_reconfig.reconfig_core.altera_pll_reconfig_core_inst0" File: C:/code/MiSTer_mp4_player/sys/pll_cfg/altera_pll_reconfig_top.v Line: 420
+Info (12128): Elaborating entity "ddram" for hierarchy "emu:emu|ddram:ddram" File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 612
+Info (12128): Elaborating entity "vga" for hierarchy "emu:emu|vga:vga" File: C:/code/MiSTer_mp4_player/Groovy.sv Line: 1704
+Info (12128): Elaborating entity "fifo_vga" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0" File: C:/code/MiSTer_mp4_player/rtl/vga.v Line: 175
+Info (12128): Elaborating entity "dcfifo" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component" File: C:/code/MiSTer_mp4_player/rtl/fifo_vga.v Line: 93
+Info (12130): Elaborated megafunction instantiation "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component" File: C:/code/MiSTer_mp4_player/rtl/fifo_vga.v Line: 93
+Info (12133): Instantiated megafunction "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component" with the following parameter: File: C:/code/MiSTer_mp4_player/rtl/fifo_vga.v Line: 93
+    Info (12134): Parameter "add_usedw_msb_bit" = "ON"
+    Info (12134): Parameter "intended_device_family" = "Cyclone V"
+    Info (12134): Parameter "lpm_numwords" = "16384"
+    Info (12134): Parameter "lpm_showahead" = "OFF"
+    Info (12134): Parameter "lpm_type" = "dcfifo"
+    Info (12134): Parameter "lpm_width" = "8"
+    Info (12134): Parameter "lpm_widthu" = "15"
+    Info (12134): Parameter "overflow_checking" = "ON"
+    Info (12134): Parameter "rdsync_delaypipe" = "4"
+    Info (12134): Parameter "read_aclr_synch" = "OFF"
+    Info (12134): Parameter "underflow_checking" = "ON"
+    Info (12134): Parameter "use_eab" = "ON"
+    Info (12134): Parameter "write_aclr_synch" = "OFF"
+    Info (12134): Parameter "wrsync_delaypipe" = "4"
+Info (12021): Found 1 design units, including 1 entities, in source file db/dcfifo_27t1.tdf
+    Info (12023): Found entity 1: dcfifo_27t1 File: C:/code/MiSTer_mp4_player/db/dcfifo_27t1.tdf Line: 43
+Info (12128): Elaborating entity "dcfifo_27t1" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated" File: c:/intelfpga_lite/17.0/quartus/libraries/megafunctions/dcfifo.tdf Line: 191
+Info (12021): Found 1 design units, including 1 entities, in source file db/a_gray2bin_tab.tdf
+    Info (12023): Found entity 1: a_gray2bin_tab File: C:/code/MiSTer_mp4_player/db/a_gray2bin_tab.tdf Line: 23
+Info (12128): Elaborating entity "a_gray2bin_tab" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated|a_gray2bin_tab:wrptr_g_gray2bin" File: C:/code/MiSTer_mp4_player/db/dcfifo_27t1.tdf Line: 57
+Info (12021): Found 1 design units, including 1 entities, in source file db/a_graycounter_sv6.tdf
+    Info (12023): Found entity 1: a_graycounter_sv6 File: C:/code/MiSTer_mp4_player/db/a_graycounter_sv6.tdf Line: 25
+Info (12128): Elaborating entity "a_graycounter_sv6" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated|a_graycounter_sv6:rdptr_g1p" File: C:/code/MiSTer_mp4_player/db/dcfifo_27t1.tdf Line: 59
+Info (12021): Found 1 design units, including 1 entities, in source file db/a_graycounter_odc.tdf
+    Info (12023): Found entity 1: a_graycounter_odc File: C:/code/MiSTer_mp4_player/db/a_graycounter_odc.tdf Line: 25
+Info (12128): Elaborating entity "a_graycounter_odc" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated|a_graycounter_odc:wrptr_g1p" File: C:/code/MiSTer_mp4_player/db/dcfifo_27t1.tdf Line: 60
+Info (12021): Found 1 design units, including 1 entities, in source file db/altsyncram_26d1.tdf
+    Info (12023): Found entity 1: altsyncram_26d1 File: C:/code/MiSTer_mp4_player/db/altsyncram_26d1.tdf Line: 32
+Info (12128): Elaborating entity "altsyncram_26d1" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated|altsyncram_26d1:fifo_ram" File: C:/code/MiSTer_mp4_player/db/dcfifo_27t1.tdf Line: 61
+Info (12021): Found 1 design units, including 1 entities, in source file db/decode_s07.tdf
+    Info (12023): Found entity 1: decode_s07 File: C:/code/MiSTer_mp4_player/db/decode_s07.tdf Line: 23
+Info (12128): Elaborating entity "decode_s07" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated|altsyncram_26d1:fifo_ram|decode_s07:decode12" File: C:/code/MiSTer_mp4_player/db/altsyncram_26d1.tdf Line: 49
+Info (12021): Found 1 design units, including 1 entities, in source file db/mux_cr7.tdf
+    Info (12023): Found entity 1: mux_cr7 File: C:/code/MiSTer_mp4_player/db/mux_cr7.tdf Line: 23
+Info (12128): Elaborating entity "mux_cr7" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated|altsyncram_26d1:fifo_ram|mux_cr7:mux13" File: C:/code/MiSTer_mp4_player/db/altsyncram_26d1.tdf Line: 51
+Info (12021): Found 1 design units, including 1 entities, in source file db/alt_synch_pipe_dpl.tdf
+    Info (12023): Found entity 1: alt_synch_pipe_dpl File: C:/code/MiSTer_mp4_player/db/alt_synch_pipe_dpl.tdf Line: 27
+Info (12128): Elaborating entity "alt_synch_pipe_dpl" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated|alt_synch_pipe_dpl:rs_dgwp" File: C:/code/MiSTer_mp4_player/db/dcfifo_27t1.tdf Line: 68
+Info (12021): Found 1 design units, including 1 entities, in source file db/dffpipe_ue9.tdf
+    Info (12023): Found entity 1: dffpipe_ue9 File: C:/code/MiSTer_mp4_player/db/dffpipe_ue9.tdf Line: 25
+Info (12128): Elaborating entity "dffpipe_ue9" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated|alt_synch_pipe_dpl:rs_dgwp|dffpipe_ue9:dffpipe14" File: C:/code/MiSTer_mp4_player/db/alt_synch_pipe_dpl.tdf Line: 35
+Info (12021): Found 1 design units, including 1 entities, in source file db/dffpipe_8d9.tdf
+    Info (12023): Found entity 1: dffpipe_8d9 File: C:/code/MiSTer_mp4_player/db/dffpipe_8d9.tdf Line: 25
+Info (12128): Elaborating entity "dffpipe_8d9" for hierarchy "emu:emu|vga:vga|fifo_vga:fifo_r0|dcfifo:dcfifo_component|dcfifo_27t1:auto_generated|dffpipe_8d9:wrfull_reg" F
