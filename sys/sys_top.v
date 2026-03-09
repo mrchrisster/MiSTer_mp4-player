@@ -452,17 +452,20 @@ assign dma_avl_waitrequest   = ram_waitrequest;
 assign dma_avl_readdata      = ram_readdata;
 assign dma_avl_readdatavalid = ram_readdatavalid;
 
-// ── fb_scan_out: CRT-compatible VGA framebuffer scan-out ──────────────────
-// Reads the front RGB565 buffer from DDR3 line-by-line, synchronized to the
-// emu's native video timing.  Output muxed into the VGA native path below.
+// ── fb_scan_out: CRT framebuffer scan-out with internal 480i timing ───────
+// Generates its own 640×480i @ 59.94Hz timing for CRT output, independent of
+// the emu's native video mode.  Reads framebuffer from DDR3 and outputs RGB +
+// timing signals for VGA connector.
+wire fbs_hs, fbs_vs, fbs_de;
+
 fb_scan_out #(.W(640), .H(480), .BEATS(8'd160)) fbs (
     .clk              (clk_sys),
     .reset            (reset),
-    .ce_pixel         (ce_pix),
-    .de_in            (de_emu),
-    .vs_in            (vs_emu),
     .fb_active        (fb_en),
     .fb_base          (fb_base_sel),
+    .hs_out           (fbs_hs),
+    .vs_out           (fbs_vs),
+    .de_out           (fbs_de),
     .r_out            (fbs_r),
     .g_out            (fbs_g),
     .b_out            (fbs_b),
@@ -473,12 +476,8 @@ fb_scan_out #(.W(640), .H(480), .BEATS(8'd160)) fbs (
     .avl_readdata     (fbs_avl_readdata),
     .avl_readdatavalid(fbs_avl_readdatavalid)
 );
-// fb_scan_out Avalon port is stalled: dedicated DDR3 port not yet wired.
-// Output will be black (buf_ready never set) until a second
-// fpga2sdram port is added in Platform Designer and wired here.
-assign fbs_avl_waitrequest   = 1'b1;
-assign fbs_avl_readdata      = 64'd0;
-assign fbs_avl_readdatavalid = 1'b0;
+// fb_scan_out Avalon port connected to ram2 via ram2_arb (see ram2_arbiter inst).
+// Timing outputs (fbs_hs, fbs_vs, fbs_de) replace emu timing when fb_en=1.
 
 // ── FPGA debug UART: yuv_dma_debug → HPS /dev/ttyS1 ─────────────────────
 // Replaced mp4_debug_uart with yuv_dma_debug (instantiated inside yuv_fb_dma.v).
@@ -818,7 +817,7 @@ sysmem_lite sysmem
 	.ram1_write(ram_write),
 
 	//64-bit DDR3 RAM access
-	.ram2_clk(clk_audio),
+	.ram2_clk(clk_sys),
 	.ram2_address(ram2_address),
 	.ram2_burstcount(ram2_burstcount),
 	.ram2_waitrequest(ram2_waitrequest),
@@ -843,30 +842,31 @@ sysmem_lite sysmem
 	.vbuf_read(vbuf_read)
 );
 
-wire [28:0] ram2_address;
-wire  [7:0] ram2_burstcount;
-wire  [7:0] ram2_byteenable;
-wire        ram2_waitrequest;
-wire [63:0] ram2_readdata;
-wire [63:0] ram2_writedata;
-wire        ram2_readdatavalid;
-wire        ram2_read;
-wire        ram2_write;
+// ── ddr_svc (ALSA audio + OSD palette) → ram2_arb port A ───────────────
+wire [28:0] ddr_svc_address;
+wire  [7:0] ddr_svc_burstcount;
+wire  [7:0] ddr_svc_byteenable;
+wire        ddr_svc_waitrequest;
+wire [63:0] ddr_svc_readdata;
+wire [63:0] ddr_svc_writedata;
+wire        ddr_svc_readdatavalid;
+wire        ddr_svc_read;
+wire        ddr_svc_write;
 wire  [7:0] ram2_bcnt;
 
 ddr_svc ddr_svc
 (
-	.clk(clk_audio),
+	.clk(clk_sys),   // Changed from clk_audio (ram2 now synchronous with fb_scan_out)
 
-	.ram_waitrequest(ram2_waitrequest),
-	.ram_burstcnt(ram2_burstcount),
-	.ram_addr(ram2_address),
-	.ram_readdata(ram2_readdata),
-	.ram_read_ready(ram2_readdatavalid),
-	.ram_read(ram2_read),
-	.ram_writedata(ram2_writedata),
-	.ram_byteenable(ram2_byteenable),
-	.ram_write(ram2_write),
+	.ram_waitrequest(ddr_svc_waitrequest),
+	.ram_burstcnt(ddr_svc_burstcount),
+	.ram_addr(ddr_svc_address),
+	.ram_readdata(ddr_svc_readdata),
+	.ram_read_ready(ddr_svc_readdatavalid),
+	.ram_read(ddr_svc_read),
+	.ram_writedata(ddr_svc_writedata),
+	.ram_byteenable(ddr_svc_byteenable),
+	.ram_write(ddr_svc_write),
 	.ram_bcnt(ram2_bcnt),
 
 `ifndef MISTER_DISABLE_ALSA
@@ -882,6 +882,53 @@ ddr_svc ddr_svc
 	.ch1_data(pal_data),
 	.ch1_req(pal_req),
 	.ch1_ready(pal_wr)
+);
+
+// ── ram2_arb: share ram2 between ddr_svc (audio/OSD) and fb_scan_out (CRT) ─
+wire [28:0] ram2_address;
+wire  [7:0] ram2_burstcount;
+wire  [7:0] ram2_byteenable;
+wire        ram2_waitrequest;
+wire [63:0] ram2_readdata;
+wire [63:0] ram2_writedata;
+wire        ram2_readdatavalid;
+wire        ram2_read;
+wire        ram2_write;
+
+ram2_arb ram2_arbiter
+(
+	.clk         (clk_sys),
+	.reset       (reset),
+
+	// Master A = ddr_svc (ALSA + palette, high priority)
+	.a_addr      (ddr_svc_address),
+	.a_burst     (ddr_svc_burstcount),
+	.a_read      (ddr_svc_read),
+	.a_write     (ddr_svc_write),
+	.a_wdata     (ddr_svc_writedata),
+	.a_be        (ddr_svc_byteenable),
+	.a_waitreq   (ddr_svc_waitrequest),
+	.a_rdata     (ddr_svc_readdata),
+	.a_rdv       (ddr_svc_readdatavalid),
+
+	// Master B = fb_scan_out (CRT framebuffer readout, lower priority)
+	.b_addr      (fbs_avl_address),
+	.b_burst     (fbs_avl_burstcount),
+	.b_read      (fbs_avl_read),
+	.b_waitreq   (fbs_avl_waitrequest),
+	.b_rdata     (fbs_avl_readdata),
+	.b_rdv       (fbs_avl_readdatavalid),
+
+	// Shared ram2 DDR3 port (to sysmem)
+	.ram_addr    (ram2_address),
+	.ram_burst   (ram2_burstcount),
+	.ram_read    (ram2_read),
+	.ram_write   (ram2_write),
+	.ram_wdata   (ram2_writedata),
+	.ram_be      (ram2_byteenable),
+	.ram_waitreq (ram2_waitrequest),
+	.ram_rdata   (ram2_readdata),
+	.ram_rdv     (ram2_readdatavalid)
 );
 
 wire clk_pal = clk_audio;
@@ -1567,22 +1614,15 @@ assign HDMI_TX_D  = hdmi_out_d;
 	);
 `endif
 
-// ── CRT scan-out mux: substitute fb_scan_out pixels + 2-cycle timing delay ──
-// fb_scan_out has 2-cycle pipeline latency (BRAM read + output register).
-// When fb_en=1, delay HS/VS/DE by 2 ce_pix ticks so they stay aligned with
-// the framebuffer r/g/b output.  In core mode (fb_en=0) the delay is bypassed.
+// ── CRT scan-out mux: fb_scan_out 480i timing or emu native timing ─────────
+// When fb_en=1: use fb_scan_out's internal 480i timing + framebuffer pixels.
+// When fb_en=0: use emu's native timing + core pixels.
+// fb_scan_out's timing outputs (fbs_hs/vs/de) are already aligned with its
+// pixel outputs (fbs_r/g/b), so no additional delay is needed.
 `ifdef MISTER_FB
-reg fbs_de1, fbs_de2, fbs_hs1, fbs_hs2, fbs_vs1, fbs_vs2;
-always @(posedge clk_vid) begin
-    if (ce_pix) begin
-        {fbs_de2, fbs_de1} <= {fbs_de1, de_emu};
-        {fbs_hs2, fbs_hs1} <= {fbs_hs1, hs_fix};
-        {fbs_vs2, fbs_vs1} <= {fbs_vs1, vs_fix};
-    end
-end
-wire        de_sl_in  = fb_en ? fbs_de2 : de_emu;
-wire        hs_sl_in  = fb_en ? fbs_hs2 : hs_fix;
-wire        vs_sl_in  = fb_en ? fbs_vs2 : vs_fix;
+wire        de_sl_in  = fb_en ? fbs_de : de_emu;
+wire        hs_sl_in  = fb_en ? fbs_hs : hs_fix;
+wire        vs_sl_in  = fb_en ? fbs_vs : vs_fix;
 wire [23:0] pix_sl_in = de_sl_in ? (fb_en ? {fbs_r, fbs_g, fbs_b}
                                            : {r_out, g_out, b_out}) : 24'd0;
 `else

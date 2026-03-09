@@ -63,6 +63,7 @@ static void on_signal(int sig) {
 #define AXI_SIZE  4096
 #define AXI_STATUS_IDX   0   // [2]=fb_vbl  [3]=dma_done_latch
 #define AXI_CTRL_IDX     2   // [0]=buf_sel [1]=dma_trigger
+#define AXI_SWITCHRES_IDX 3  // Switchres trigger
 #define AXI_YUV_Y_IDX    4
 #define AXI_YUV_U_IDX    5
 #define AXI_YUV_V_IDX    6
@@ -1035,6 +1036,49 @@ int main(int argc, char** argv) {
 
     fprintf(stderr, "[mp4_play] YUV region: 0x%08X  Y=%u U=%u V=%u bytes\n",
             (unsigned)YUV_Y_PHYS, YUV_Y_SIZE, YUV_U_SIZE, YUV_V_SIZE);
+
+    // ── Trigger Switchres 480i for CRT output ─────────────────────────────────────
+    fprintf(stderr, "[mp4_play] triggering Switchres 480i for CRT...\n");
+    {
+        // Groovy Switchres header for 640×480i @ 59.94Hz NTSC
+        const uint8_t groovy_480i_modeline[20] = {
+            0x80, 0x02,  // H = 640
+            0x10,        // HFP = 16
+            0x60,        // HS = 96
+            0x6A,        // HBP = 106
+            0xF0, 0x00,  // V = 240 (per field)
+            0x04,        // VFP = 4
+            0x03,        // VS = 3
+            0x0F,        // VBP = 15
+            0x1B,        // PLL_M0 = 27
+            0x00,        // PLL_M1 = 0
+            0x64,        // PLL_C0 = 100
+            0x00,        // PLL_C1 = 0
+            0x01, 0x00, 0x00, 0x00,  // PLL_K = 1
+            0x01,        // CE_PIX = 1
+            0x01         // INTERLACED = 1
+        };
+
+        // Map DDR3 page containing Switchres header (offset 8 from framebuffer base)
+        const uint32_t SWITCHRES_HDR_PHYS = FB_PHYS + 8;
+        const uint32_t PAGE_SIZE = 4096;
+        const uint32_t PAGE_BASE = FB_PHYS & ~(PAGE_SIZE - 1);
+        const uint32_t OFFSET_IN_PAGE = (FB_PHYS & (PAGE_SIZE - 1)) + 8;
+
+        uint8_t* page = (uint8_t*)mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE,
+                                       MAP_SHARED, mem_fd, PAGE_BASE);
+        if (page == MAP_FAILED) {
+            perror("mmap Switchres header page");
+        } else {
+            memcpy(page + OFFSET_IN_PAGE, groovy_480i_modeline, 20);
+            munmap(page, PAGE_SIZE);
+
+            // Trigger Switchres via AXI register 0x00C
+            axi[AXI_SWITCHRES_IDX] = 0x1;  // bit 0 = trigger, frame 0
+            usleep(100000);  // Wait 100ms for PLL to stabilize
+            fprintf(stderr, "[mp4_play] Switchres triggered, waiting for PLL...\n");
+        }
+    }
 
     play_video(argv[1], axi, yuv_y, yuv_u, yuv_v, benchmark, threads, seek_s, no_audio);
 

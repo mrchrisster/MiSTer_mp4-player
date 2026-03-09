@@ -1,5 +1,6 @@
 	db
 greybox_tmp
+Groovy_MiSTer-main
 incremental_db
 output_files
 simulation
@@ -39,3 +40,5 @@ c5_pin_model_dump.txt
 *_netlist
 *.cdf
 **/.DS_Store
+h264-daemon/fdk-aac-2.0.2/
+h264-daemon/ffmpeg-src/
